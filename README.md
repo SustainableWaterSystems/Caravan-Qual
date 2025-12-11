@@ -17,7 +17,7 @@ This code is split across three folders:
 * add_data/: scripts for adding water quality data, deriving upstream catchment polygons and linking to streamflow gauges.  
 * Caravan-Qual/: scripts for processing water quality and streamflow data to create the *Caravan-Qual* dataset, both as .csv's and in .zarr format.
 
-A full list of variables included in *Caravan-Qual* is also provided: Caravan-Qual_zarr_variables.csv
+A full list of variables included in *Caravan-Qual* is also provided in this repository (Caravan-Qual_zarr_variables.csv)
 
 ## *Caravan*
 *Caravan-Qual* adds water quality observations to the existing *Caravan* [dataset](https://zenodo.org/records/15529786). The original Caravan paper can be accessed [here](https://www.nature.com/articles/s41597-023-01975-w), while developments and community extensions are documented on Caravan's [GitHub](https://github.com/kratzert/Caravan/tree/main) page.
