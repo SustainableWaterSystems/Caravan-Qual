@@ -22,7 +22,7 @@ A full list of variables included in *Caravan-Qual* is also provided in this rep
 ## *Caravan*
 *Caravan-Qual* adds water quality observations to the existing *Caravan* [dataset](https://zenodo.org/records/15529786). The original Caravan paper can be accessed [here](https://www.nature.com/articles/s41597-023-01975-w), while developments and community extensions are documented on Caravan's [GitHub](https://github.com/kratzert/Caravan/tree/main) page.
 
-Meteorological data and catchment attributes for water quality monitoring stations are derived using the approach developed for *Caravan*, which are detailed [here](https://github.com/kratzert/Caravan/tree/main/code). 
+Meteorological data and catchment attributes for water quality monitoring stations are derived using the approach developed for *Caravan*, which are available [here](https://github.com/kratzert/Caravan/tree/main/code). 
 
 
 ## Contact
