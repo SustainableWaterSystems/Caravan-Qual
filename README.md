@@ -14,4 +14,5 @@ This repository contains the code for recreating or extending the *Caravan-Qual*
 
 ## Contact
 ***Caravan-Qual***: Edward R. Jones (e.r.jones@uu.nl)
+
 ***Caravan***: Frederik Kratzert (kratzert@google.com)
