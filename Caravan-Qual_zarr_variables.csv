@@ -1,0 +1,341 @@
+variable,category,units,description
+aet_mm_s01,catchment_attributes,mm,actual evapotranspiration (January mean)
+aet_mm_s02,catchment_attributes,mm,actual evapotranspiration (February mean)
+aet_mm_s03,catchment_attributes,mm,actual evapotranspiration (March mean)
+aet_mm_s04,catchment_attributes,mm,actual evapotranspiration (April mean)
+aet_mm_s05,catchment_attributes,mm,actual evapotranspiration (May mean)
+aet_mm_s06,catchment_attributes,mm,actual evapotranspiration (June mean)
+aet_mm_s07,catchment_attributes,mm,actual evapotranspiration (July mean)
+aet_mm_s08,catchment_attributes,mm,actual evapotranspiration (August mean)
+aet_mm_s09,catchment_attributes,mm,actual evapotranspiration (September mean)
+aet_mm_s10,catchment_attributes,mm,actual evapotranspiration (October mean)
+aet_mm_s11,catchment_attributes,mm,actual evapotranspiration (November mean)
+aet_mm_s12,catchment_attributes,mm,actual evapotranspiration (December mean)
+aet_mm_syr,catchment_attributes,mm,actual evapotranspiration (Annual mean)
+area,catchment_attributes,km2,catchment area (aggregated)
+area_fraction_used_for_aggregation,catchment_attributes,fraction,fraction area used for aggregation of catchment attributes
+ari_ix_sav,catchment_attributes,index,global aridity index (spatial mean)
+cls_cl_smj,catchment_attributes,classes,climate strata from GeNS (n = 125)
+cly_pc_sav,catchment_attributes,%,clay fraction in soil (spatial mean)
+clz_cl_smj,catchment_attributes,classes,climate zones from GEnS (n = 18)
+cmi_ix_s01,catchment_attributes,index,climate moisture index (January mean)
+cmi_ix_s02,catchment_attributes,index,climate moisture index (February mean)
+cmi_ix_s03,catchment_attributes,index,climate moisture index (March mean)
+cmi_ix_s04,catchment_attributes,index,climate moisture index (April mean)
+cmi_ix_s05,catchment_attributes,index,climate moisture index (May mean)
+cmi_ix_s06,catchment_attributes,index,climate moisture index (June mean)
+cmi_ix_s07,catchment_attributes,index,climate moisture index (July mean)
+cmi_ix_s08,catchment_attributes,index,climate moisture index (August mean)
+cmi_ix_s09,catchment_attributes,index,climate moisture index (September mean)
+cmi_ix_s10,catchment_attributes,index,climate moisture index (October mean)
+cmi_ix_s11,catchment_attributes,index,climate moisture index (November mean)
+cmi_ix_s12,catchment_attributes,index,climate moisture index (December mean)
+cmi_ix_syr,catchment_attributes,index,climate moisture index (Annual mean)
+crp_pc_sse,catchment_attributes,%,cropland extent (spatial mean)
+dis_m3_pmn,catchment_attributes,m3 s-1,natural discharge (annual min)
+dis_m3_pmx,catchment_attributes,m3 s-1,natural discharge (annual max)
+dis_m3_pyr,catchment_attributes,m3 s-1,natural discharge (annual mean)
+dor_pc_pva,catchment_attributes,index,degree of regulation (at pour point)
+ele_mt_sav,catchment_attributes,m above sea level,elevation (spatial mean)
+ele_mt_smn,catchment_attributes,m above sea level,elevation (spatial min)
+ele_mt_smx,catchment_attributes,m above sea level,elevation (spatial max)
+ero_kh_sav,catchment_attributes,kg/hectare/yr,soil erosion (spatial mean)
+fec_cl_smj,catchment_attributes,classes,"freshwater ecoregions (spatial majority, n = 426)"
+fmh_cl_smj,catchment_attributes,classes,"freshwater major habitat types (spatial majority, n = 13)"
+for_pc_sse,catchment_attributes,%,forest cover extent (spatial mean)
+gdp_ud_sav,catchment_attributes,USD ($),gross domestic product (spatial mean)
+gdp_ud_ssu,catchment_attributes,USD ($),gross domestic product (sum over subbasin)
+gla_pc_sse,catchment_attributes,%,glacier extent (spatial mean)
+glc_cl_smj,catchment_attributes,classes,"land cover classes (spatial majority, n = 22)"
+glc_pc_s01,catchment_attributes,%,land cover class 1 (spatial mean)
+glc_pc_s02,catchment_attributes,%,land cover class 2 (spatial mean)
+glc_pc_s03,catchment_attributes,%,land cover class 3 (spatial mean)
+glc_pc_s04,catchment_attributes,%,land cover class 4 (spatial mean)
+glc_pc_s05,catchment_attributes,%,land cover class 5 (spatial mean)
+glc_pc_s06,catchment_attributes,%,land cover class 6 (spatial mean)
+glc_pc_s07,catchment_attributes,%,land cover class 7 (spatial mean)
+glc_pc_s08,catchment_attributes,%,land cover class 8 (spatial mean)
+glc_pc_s09,catchment_attributes,%,land cover class 9 (spatial mean)
+glc_pc_s10,catchment_attributes,%,land cover class 10 (spatial mean)
+glc_pc_s11,catchment_attributes,%,land cover class 11 (spatial mean)
+glc_pc_s12,catchment_attributes,%,land cover class 12 (spatial mean)
+glc_pc_s13,catchment_attributes,%,land cover class 13 (spatial mean)
+glc_pc_s14,catchment_attributes,%,land cover class 14 (spatial mean)
+glc_pc_s15,catchment_attributes,%,land cover class 15 (spatial mean)
+glc_pc_s16,catchment_attributes,%,land cover class 16 (spatial mean)
+glc_pc_s17,catchment_attributes,%,land cover class 17 (spatial mean)
+glc_pc_s18,catchment_attributes,%,land cover class 18 (spatial mean)
+glc_pc_s19,catchment_attributes,%,land cover class 19 (spatial mean)
+glc_pc_s20,catchment_attributes,%,land cover class 20 (spatial mean)
+glc_pc_s21,catchment_attributes,%,land cover class 21 (spatial mean)
+glc_pc_s22,catchment_attributes,%,land cover class 22 (spatial mean)
+gwt_cm_sav,catchment_attributes,cm,groundwater table depth (spatial mean)
+hdi_ix_sav,catchment_attributes,index,human development index (spatial mean)
+hft_ix_s09,catchment_attributes,index,human footprint in 2009 (spatial mean)
+hft_ix_s93,catchment_attributes,index,human footprint in 1993 (spatial mean)
+inu_pc_slt,catchment_attributes,%,inundation extent (long term max)
+inu_pc_smn,catchment_attributes,%,inundation extent (annual min)
+inu_pc_smx,catchment_attributes,%,inundation extent (annual max)
+ire_pc_sse,catchment_attributes,%,equipped irrigated area extent (spatial mean)
+kar_pc_sse,catchment_attributes,%,karst area extent (spatial mean)
+lit_cl_smj,catchment_attributes,classes,"lithological extent (spatial majority, n = 16)"
+lka_pc_sse,catchment_attributes,%,limnicity - percent lake area (spatial extent)
+lkv_mc_usu,catchment_attributes,million m3,lake volume (at pour point)
+nli_ix_sav,catchment_attributes,index,nighttime lights (spatial mean)
+pac_pc_sse,catchment_attributes,%,protected area extent (spatial mean)
+pet_mm_s01,catchment_attributes,mm,potential evapotranspiration (January mean)
+pet_mm_s02,catchment_attributes,mm,potential evapotranspiration (February mean)
+pet_mm_s03,catchment_attributes,mm,potential evapotranspiration (March mean)
+pet_mm_s04,catchment_attributes,mm,potential evapotranspiration (April mean)
+pet_mm_s05,catchment_attributes,mm,potential evapotranspiration (May mean)
+pet_mm_s06,catchment_attributes,mm,potential evapotranspiration (June mean)
+pet_mm_s07,catchment_attributes,mm,potential evapotranspiration (July mean)
+pet_mm_s08,catchment_attributes,mm,potential evapotranspiration (August mean)
+pet_mm_s09,catchment_attributes,mm,potential evapotranspiration (September mean)
+pet_mm_s10,catchment_attributes,mm,potential evapotranspiration (October mean)
+pet_mm_s11,catchment_attributes,mm,potential evapotranspiration (November mean)
+pet_mm_s12,catchment_attributes,mm,potential evapotranspiration (December mean)
+pet_mm_syr,catchment_attributes,mm,potential evapotranspiration (Annual mean)
+pnv_cl_smj,catchment_attributes,classes,"potential natural vegetation (spatial majority, n = 15)"
+pnv_pc_s01,catchment_attributes,%,potential natural vegetation class 1 (spatial mean)
+pnv_pc_s02,catchment_attributes,%,potential natural vegetation class 2 (spatial mean)
+pnv_pc_s03,catchment_attributes,%,potential natural vegetation class 3 (spatial mean)
+pnv_pc_s04,catchment_attributes,%,potential natural vegetation class 4 (spatial mean)
+pnv_pc_s05,catchment_attributes,%,potential natural vegetation class 5 (spatial mean)
+pnv_pc_s06,catchment_attributes,%,potential natural vegetation class 6 (spatial mean)
+pnv_pc_s07,catchment_attributes,%,potential natural vegetation class 7 (spatial mean)
+pnv_pc_s08,catchment_attributes,%,potential natural vegetation class 8 (spatial mean)
+pnv_pc_s09,catchment_attributes,%,potential natural vegetation class 9 (spatial mean)
+pnv_pc_s10,catchment_attributes,%,potential natural vegetation class 10 (spatial mean)
+pnv_pc_s11,catchment_attributes,%,potential natural vegetation class 11 (spatial mean)
+pnv_pc_s12,catchment_attributes,%,potential natural vegetation class 12 (spatial mean)
+pnv_pc_s13,catchment_attributes,%,potential natural vegetation class 13 (spatial mean)
+pnv_pc_s14,catchment_attributes,%,potential natural vegetation class 14 (spatial mean)
+pnv_pc_s15,catchment_attributes,%,potential natural vegetation class 15 (spatial mean)
+pop_ct_usu,catchment_attributes,thousands,population count (pour point)
+ppd_pk_sav,catchment_attributes,people per km2,population density (spatial mean)
+pre_mm_s01,catchment_attributes,mm,precipitation (January mean)
+pre_mm_s02,catchment_attributes,mm,precipitation (February mean)
+pre_mm_s03,catchment_attributes,mm,precipitation (March mean)
+pre_mm_s04,catchment_attributes,mm,precipitation (April mean)
+pre_mm_s05,catchment_attributes,mm,precipitation (May mean)
+pre_mm_s06,catchment_attributes,mm,precipitation (June mean)
+pre_mm_s07,catchment_attributes,mm,precipitation (July mean)
+pre_mm_s08,catchment_attributes,mm,precipitation (August mean)
+pre_mm_s09,catchment_attributes,mm,precipitation (September mean)
+pre_mm_s10,catchment_attributes,mm,precipitation (October mean)
+pre_mm_s11,catchment_attributes,mm,precipitation (November mean)
+pre_mm_s12,catchment_attributes,mm,precipitation (December mean)
+pre_mm_syr,catchment_attributes,mm,precipitation (Annual mean)
+prm_pc_sse,catchment_attributes,%,permafrost extent (spatial mean)
+pst_pc_sse,catchment_attributes,%,pasture extent (spatial mean)
+rdd_mk_sav,catchment_attributes,m/km2,road density (spatial mean)
+rev_mc_usu,catchment_attributes,million m3,reservoir volume (pour point)
+ria_ha_usu,catchment_attributes,ha,river area (pour point)
+riv_tc_usu,catchment_attributes,count,number of river segments (upstream area)
+run_mm_syr,catchment_attributes,mm,land surface runoff (spatial mean)
+sgr_dk_sav,catchment_attributes,dm/km,stream gradient (spatial mean)
+slp_dg_sav,catchment_attributes,degrees,terrain slope (spatial mean)
+slt_pc_sav,catchment_attributes,%,silt fraction in soil (spatial mean)
+snd_pc_sav,catchment_attributes,%,sand fraction in soil (spatial mean)
+snw_pc_s01,catchment_attributes,%,snow cover extent  (January mean)
+snw_pc_s02,catchment_attributes,%,snow cover extent  (February mean)
+snw_pc_s03,catchment_attributes,%,snow cover extent  (March mean)
+snw_pc_s04,catchment_attributes,%,snow cover extent  (April mean)
+snw_pc_s05,catchment_attributes,%,snow cover extent  (May mean)
+snw_pc_s06,catchment_attributes,%,snow cover extent  (June mean)
+snw_pc_s07,catchment_attributes,%,snow cover extent  (July mean)
+snw_pc_s08,catchment_attributes,%,snow cover extent  (August mean)
+snw_pc_s09,catchment_attributes,%,snow cover extent  (September mean)
+snw_pc_s10,catchment_attributes,%,snow cover extent  (October mean)
+snw_pc_s11,catchment_attributes,%,snow cover extent  (November mean)
+snw_pc_s12,catchment_attributes,%,snow cover extent  (December mean)
+snw_pc_smx,catchment_attributes,%,snow cover extent  (Annual max)
+snw_pc_syr,catchment_attributes,%,snow cover extent  (Annual mean)
+soc_th_sav,catchment_attributes,tonnes/hectare,organic carbon content in soil (spatial mean)
+swc_pc_s01,catchment_attributes,%,soil water content  (January mean)
+swc_pc_s02,catchment_attributes,%,soil water content  (February mean)
+swc_pc_s03,catchment_attributes,%,soil water content  (March mean)
+swc_pc_s04,catchment_attributes,%,soil water content  (April mean)
+swc_pc_s05,catchment_attributes,%,soil water content  (May mean)
+swc_pc_s06,catchment_attributes,%,soil water content  (June mean)
+swc_pc_s07,catchment_attributes,%,soil water content  (July mean)
+swc_pc_s08,catchment_attributes,%,soil water content  (August mean)
+swc_pc_s09,catchment_attributes,%,soil water content  (September mean)
+swc_pc_s10,catchment_attributes,%,soil water content  (October mean)
+swc_pc_s11,catchment_attributes,%,soil water content  (November mean)
+swc_pc_s12,catchment_attributes,%,soil water content  (December mean)
+swc_pc_syr,catchment_attributes,%,soil water content  (Annual mean)
+tbi_cl_smj,catchment_attributes,classes,"terrestrial biomes (spatial majority, n = 14)"
+tec_cl_smj,catchment_attributes,classes,"terrestrial ecosystems (spatial majority, n = 846)"
+tmp_dc_s01,catchment_attributes,deg C,air temperature  (January mean)
+tmp_dc_s02,catchment_attributes,deg C,air temperature  (February mean)
+tmp_dc_s03,catchment_attributes,deg C,air temperature  (March mean)
+tmp_dc_s04,catchment_attributes,deg C,air temperature  (April mean)
+tmp_dc_s05,catchment_attributes,deg C,air temperature  (May mean)
+tmp_dc_s06,catchment_attributes,deg C,air temperature  (June mean)
+tmp_dc_s07,catchment_attributes,deg C,air temperature  (July mean)
+tmp_dc_s08,catchment_attributes,deg C,air temperature  (August mean)
+tmp_dc_s09,catchment_attributes,deg C,air temperature  (September mean)
+tmp_dc_s10,catchment_attributes,deg C,air temperature  (October mean)
+tmp_dc_s11,catchment_attributes,deg C,air temperature  (November mean)
+tmp_dc_s12,catchment_attributes,deg C,air temperature  (December mean)
+tmp_dc_smn,catchment_attributes,deg C,air temperature  (Annual min)
+tmp_dc_smx,catchment_attributes,deg C,air temperature  (Annual max)
+tmp_dc_syr,catchment_attributes,deg C,air temperature  (Annual mean)
+urb_pc_sse,catchment_attributes,%,urban extent (spatial mean)
+wet_cl_smj,catchment_attributes,classes,"wetland class (spatial majority, n =11)"
+wet_pc_s01,catchment_attributes,%,wetland class 1 (spatial mean)
+wet_pc_s02,catchment_attributes,%,wetland class 2 (spatial mean)
+wet_pc_s03,catchment_attributes,%,wetland class 3 (spatial mean)
+wet_pc_s04,catchment_attributes,%,wetland class 4 (spatial mean)
+wet_pc_s05,catchment_attributes,%,wetland class 5 (spatial mean)
+wet_pc_s06,catchment_attributes,%,wetland class 6 (spatial mean)
+wet_pc_s07,catchment_attributes,%,wetland class 7 (spatial mean)
+wet_pc_s08,catchment_attributes,%,wetland class 8 (spatial mean)
+wet_pc_s09,catchment_attributes,%,wetland class 9 (spatial mean)
+wet_pc_sg1,catchment_attributes,%,wetland class group 1 (spatial mean)
+wet_pc_sg2,catchment_attributes,%,wetland class group 2 (spatial mean)
+country_name,metadata,unique_id,country name
+gauge_id,metadata,unique_id,streamflow gauge unique identifier
+gauge_lat,metadata,decimal_degrees,latitude of streamflow gauge
+gauge_lon,metadata,decimal_degrees,longitude of streamflow gauge
+hydrobasin_level12,metadata,unique_id,hydrobasin at level 12
+LINKNO,metadata,unique_id,unique river segments
+merged_LINKNO,metadata,unique_id,common identifier for connected river segments where there is no change in stream order
+time,metadata,day,day
+wqms_id,metadata,unique_id,water quality monitoring station unique identifier
+wqms_lat,metadata,decimal_degrees,latitude of water quality monitoring station
+wqms_lon,metadata,decimal_degrees,longitude of water quality monitoring station
+DSContArea,stream_attributes,m2,drainage area upstream of the most downstream point
+LengthGeodesicMeters,stream_attributes,m,geodesic length of the river segment
+musk_k,stream_attributes,time,Muskingum k parameter
+musk_x,stream_attributes,dimensionless,Muskingum x parameter
+strmOrder,stream_attributes,classes,Strahler stream order
+TDXHydroRegion,stream_attributes,unique_id,TDX regional group number
+TerminalLink,stream_attributes,unique_id,TDX number at the eventual stream outlet
+TopologicalOrder,stream_attributes,classes,"Topological order of a stream, from headwater to outlet"
+Amoxicillin,water_quality,ug/l,Amoxicillin
+As-Dis,water_quality,ug/l,Arsenic - Dissolved
+As-Tot,water_quality,ug/l,Arsenic - Total
+Atenolol,water_quality,ug/l,Atenolol
+Atrazine,water_quality,ug/l,Atrazine
+Benzene,water_quality,ug/l,Benzene
+BOD,water_quality,mg/l,Biochemical Oxygen Demand
+BOD5,water_quality,mg/l,Biochemical Oxygen Demand - 5 days
+BOD7,water_quality,mg/l,Biochemical Oxygen Demand - 7 days
+Ca-Dis,water_quality,mg/l,Calcium - Dissolved
+Caffeine,water_quality,ug/l,Caffeine
+Carbamazepine,water_quality,ug/l,Carbamazepine
+Ca-Tot,water_quality,mg/l,Calcium - Total
+Cd-Dis,water_quality,ug/l,Cadmium - Dissolved
+Cd-Tot,water_quality,ug/l,Cadmium - Total
+Chl-a,water_quality,ug/l,ChlorA
+Cl-Dis,water_quality,mg/l,Chloride - Dissolved
+Cl-Tot,water_quality,mg/l,Chloride - Total
+COD,water_quality,mg/l,Chemical Oxygen Demand
+CODCr,water_quality,mg/l,Chemical Oxygen Demand
+CODMn,water_quality,mg/l,Chemical Oxygen Demand
+Cr-Dis,water_quality,ug/l,Chromium - Dissolved
+Cr-Tot,water_quality,ug/l,Chromium - Total
+Cu-Dis,water_quality,ug/l,Copper - Dissolved
+Cu-Tot,water_quality,ug/l,Copper - Total
+DC,water_quality,mg/l,Dissolved Carbon
+DIC,water_quality,mg/l,Dissolved Inorganic Carbon
+Diclofenac,water_quality,ug/l,Diclofenac
+DIN,water_quality,mg/l,Dissolved Inorganic Nitrogen
+DIP,water_quality,mg/l,Dissolved Inorganic Phosphorus
+DKN,water_quality,mg/l,Dissolved Kjeldahl Nitrogen
+DO,water_quality,mg/l,Dissolved Oxygen
+DOC,water_quality,mg/l,Dissolved Organic Carbon
+DON,water_quality,mg/l,Dissolved Organic Nitrogen
+DOP,water_quality,mg/l,Dissolved Organic Phosphorus
+DOSAT,water_quality,%,Dissolved Oxygen Sat
+EC,water_quality,uS/cm,Electrical Conductivity
+EColi,water_quality,cfu/100ml,Escherichia Coli
+FC,water_quality,cfu/100ml,Fecal Coliform
+F-Dis,water_quality,mg/l,Fluoride - Dissolved
+Fe-Dis,water_quality,ug/l,Iron - Dissolved
+Fe-Tot,water_quality,ug/l,Iron - Total
+F-Tot,water_quality,mg/l,Fluoride - Total
+Hardness-Tot,water_quality,mg/l,Hardness - Total
+HCO3,water_quality,mg/l,Hydrogencarbonate
+Hg-Dis,water_quality,ug/l,Mercury - Dissolved
+Hg-Tot,water_quality,ug/l,Mercury - Total
+Ibuprofen,water_quality,ug/l,Ibuprofen
+K-Dis,water_quality,mg/l,Potassium - Dissolved
+K-Tot,water_quality,mg/l,Potassium - Total
+Metoprolol,water_quality,ug/l,Metoprolol
+Mg-Dis,water_quality,mg/l,Magnesium - Dissolved
+Mg-Tot,water_quality,mg/l,Magnesium - Total
+Mn-Dis,water_quality,ug/l,Manganese - Dissolved
+Mn-Tot,water_quality,ug/l,Manganese - Total
+Naproxen,water_quality,ug/l,Naproxen
+NH3N,water_quality,mg/l,Ammonia-nitrogen
+NH4N,water_quality,mg/l,Ammonium nitrogen
+Ni-Dis,water_quality,ug/l,Nickel - Dissolved
+Ni-Tot,water_quality,ug/l,Nickel - Total
+NO2N,water_quality,mg/l,Nitrite
+NO3N,water_quality,mg/l,Nitrate
+NOxN,water_quality,mg/l,Nitrate-nitrite
+Pb-Dis,water_quality,ug/l,Lead - Dissolved
+Pb-Tot,water_quality,ug/l,Lead - Total
+PC,water_quality,mg/l,Particulate Carbon
+PFOA,water_quality,ug/l,PFOA
+PFOS,water_quality,ug/l,PFOS
+pH,water_quality,pH,pH
+PIC,water_quality,mg/l,Particulate Inorganic Carbon
+PN,water_quality,mg/l,Particulate Nitrogen
+POC,water_quality,mg/l,Particulate Organic Carbon
+PON,water_quality,mg/l,Particulate Organic Nitrogen
+POP,water_quality,mg/l,Particulate Organic Phosphorus
+Propranolol,water_quality,ug/l,Propranolol
+Sulfamethoxazole,water_quality,ug/l,Sulfamethoxazole
+TAN,water_quality,mg/l,Total Ammonia Nitrogen
+TC,water_quality,mg/l,Total Carbon
+TDN,water_quality,mg/l,Total Dissolved Nitrogen
+TDP,water_quality,mg/l,Total Dissolved Phosphorus
+TDS,water_quality,mg/l,Total Dissolved Solids
+TEMP,water_quality,deg C,Water Temperature
+TIC,water_quality,mg/l,Total Inorganic Carbon
+TIN,water_quality,mg/l,Total Inorganic Nitrogen
+TIP,water_quality,mg/l,Total Inorganic Phosphorus
+TKN,water_quality,mg/l,Total Kjeldahl Nitrogen
+TN,water_quality,mg/l,Total Nitrogen
+TOC,water_quality,mg/l,Total Organic Carbon
+TON,water_quality,mg/l,Total Organic Nitrogen
+TOP,water_quality,mg/l,Total Organic Phosphorus
+TotColi,water_quality,cfu/100ml,Total Coliforms
+TP,water_quality,mg/l,Total Phosphurus
+TPP,water_quality,mg/l,Total Particulate Phosphurus
+Trichloroethene,water_quality,ug/l,Trichloroethene
+Triclosan,water_quality,ug/l,Triclosan
+TRP,water_quality,mg/l,Total Reactive Phosphorus
+TSS,water_quality,mg/l,Total Suspended Solids
+Turbidity,water_quality,NTU,Turbidity
+Zn-Dis,water_quality,ug/l,Zinc - Dissolved
+Zn-Tot,water_quality,ug/l,Zinc - Total
+streamflow,water_quantity,m3 s-1,streamflow
+dewpoint_temperature_2m_max,weather,deg C,dewpoint temperature (daily max)
+dewpoint_temperature_2m_mean,weather,deg C,dewpoint temperature (daily mean)
+dewpoint_temperature_2m_min,weather,deg C,dewpoint temperature (daily min)
+potential_evaporation_sum_FAO_PENMAN_MONTEITH,weather,mm/day,ptential evaporation (daily sum)
+surface_net_solar_radiation_max,weather,Wm-2,shortwave radiation (daily max)
+surface_net_solar_radiation_mean,weather,Wm-2,shortwave radiation (daily mean)
+surface_net_solar_radiation_min,weather,Wm-2,shortwave radiation (daily min)
+surface_net_thermal_radiation_max,weather,Wm-2,net thermal radiation at the surface (daily max)
+surface_net_thermal_radiation_mean,weather,Wm-2,net thermal radiation at the surface (daily mean)
+surface_net_thermal_radiation_min,weather,Wm-2,net thermal radiation at the surface (daily min)
+surface_pressure_max,weather,kPa,surface pressure (daily max)
+surface_pressure_mean,weather,kPa,surface pressure (daily mean)
+surface_pressure_min,weather,kPa,surface pressure (daily min)
+temperature_2m_max,weather,deg C,air temperature (daily max)
+temperature_2m_mean,weather,deg C,air temperature (daily mean)
+temperature_2m_min,weather,deg C,air temperature (daily min)
+total_precipitation_sum,weather,mm/day,total precipitation (daily sum)
+u_component_of_wind_10m_max,weather,ms-1,eastward wind component (daily max)
+u_component_of_wind_10m_mean,weather,ms-1,eastward wind component (daily mean)
+u_component_of_wind_10m_min,weather,ms-1,eastward wind component (daily min)
+v_component_of_wind_10m_max,weather,ms-1,northward wind component (daily max)
+v_component_of_wind_10m_mean,weather,ms-1,northward wind component (daily mean)
+v_component_of_wind_10m_min,weather,ms-1,northward wind component (daily min)
