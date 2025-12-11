@@ -1,7 +1,5 @@
 # *Caravan-Qual*: A global scale integration of water quality observations into a large-sample hydrology dataset
 
-## What is *Caravan-Qual*
-
 *Caravan-Qual* is an open access dataset that brings water quality to the research paradigm of large sample hydrology (LSH), integrating water quality data from 100 constituents with catchment attributes, meterological forcing and streamflow observations. The dataset covers the time period 1980 - 2025 and currently contains ~70 million river water quality observations from across 137,373 monitoring stations, in addition to streamflow data from 25,839 gauge stations. 
 
 A manuscript associated with the dataset is currently under submission at Scientific Data [ADD LINK TO PREPRINT].
