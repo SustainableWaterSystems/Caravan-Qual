@@ -2,11 +2,11 @@
 
 *Caravan-Qual* is an open access dataset that brings water quality to the research paradigm of large sample hydrology (LSH), integrating water quality data from 100 constituents with catchment attributes, meteorological forcing and streamflow observations. The dataset covers the time period 1980 - 2025 and currently contains ~70 million river water quality observations from across 137,373 monitoring stations, in addition to streamflow data from 25,839 gauge stations. 
 
-The full dataset, including data necessary for recreating or extending *Caravan-Qual*, can be accessed [here].
+The full dataset, including data necessary for recreating or extending *Caravan-Qual*, can be accessed [here](https://doi.org/10.24416/UU01-S8QW8O).
 
 A lightweight version of the dataset is also avaliable, hosted on [Zenodo](https://doi.org/10.5281/zenodo.17787066). This version contains monthly (instead of daily) weather data to conform with Zenodo's data storage policies. 
 
-A manuscript associated with the dataset is currently under submission at Scientific Data [ADD LINK TO PREPRINT].
+A manuscript associated with the dataset is currently under submission at Scientific Data. A preprint can be found here [ADD LINK TO PREPRINT].
 
 
 ## About this repository
