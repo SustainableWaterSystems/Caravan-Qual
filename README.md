@@ -6,7 +6,7 @@ The full dataset, including data necessary for recreating or extending *Caravan-
 
 A lightweight version of the dataset is also avaliable, hosted on [Zenodo](https://doi.org/10.5281/zenodo.17787066). This version contains monthly (instead of daily) weather data to conform with Zenodo's data storage policies. 
 
-A manuscript associated with the dataset is currently under submission at Scientific Data. A preprint can be found [here](https://doi.org/10.31223/X54J39).
+A manuscript associated with the dataset is currently under submission at Scientific Data. A preprint is available at: https://doi.org/10.31223/X54J39.
 
 
 ## About this repository
