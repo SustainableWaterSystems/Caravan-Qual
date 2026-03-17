@@ -1,5 +1,3 @@
-# README
-
 ## Requirements
 
 - [Anaconda](https://www.anaconda.com/download) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
