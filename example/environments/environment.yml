@@ -1,0 +1,12 @@
+name: explore_caravan-qual
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - xarray
+  - pandas
+  - numpy
+  - matplotlib
+  - cartopy
+  - jupyter
+  - pip
