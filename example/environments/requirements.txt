@@ -1,0 +1,5 @@
+xarray
+pandas
+numpy
+matplotlib
+cartopy
