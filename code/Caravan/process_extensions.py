@@ -23,23 +23,23 @@ def create_netcdf_timeseries(dates, streamflow, output_path, station_id,
                         units=time_units, calendar="standard").astype("int32")
     
     with Dataset(output_path, "w", format="NETCDF4") as nc:
-        #Create dimensions
+        #create dimensions
         nc.createDimension("date", len(dates))
         
-        #Create time variable
+        #create time variable
         time_var = nc.createVariable("date", "i4", ("date",))
         time_var.units = time_units
         time_var.calendar = calendar
         time_var[:] = time_vals
         
-        #Create streamflow variable
+        #create streamflow variable
         sf_var = nc.createVariable("streamflow", "f4", ("date",), fill_value=np.nan)
         sf_var[:] = streamflow.astype("float32")
         sf_var.units = "mm/day"
         sf_var.long_name = "Streamflow"
         sf_var.standard_name = "water_volume_transport_in_river_channel"
         
-        #Global attributes
+        #global attributes
         nc.title = f"Streamflow for station {station_id}"
         nc.institution = dataset_name
         nc.source = f"{dataset_name} dataset"
@@ -142,13 +142,13 @@ def process_camelsfr():
     
     Config.create_dataset_dirs("camelsfr")
     
-    #Extract shapefile
+    #extract shapefile
     gpkg_path = Config.TEMP_CAMELSFR_DIR / "CAMELS_FR_geography" / "CAMELS_FR_catchment_boundaries.gpkg"
     output_shp = Config.SHAPEFILES_DIR / "camelsfr" / "camelsfr_basin_shapes.shp"
     gdf = gpd.read_file(gpkg_path)
     gdf.to_file(output_shp)
     
-    #Create attributes CSV
+    #create attributes .csv
     input_csv = Config.TEMP_CAMELSFR_DIR / "CAMELS_FR_attributes" / "static_attributes" / "CAMELS_FR_station_general_attributes.csv"
     output_csv = Config.ATTRIBUTES_DIR / "camelsfr" / "attributes_other_camelsfr.csv"
     
@@ -163,7 +163,7 @@ def process_camelsfr():
     })
     output_df.to_csv(output_csv, index=False)
     
-    #Process timeseries
+    #process timeseries
     in_dir = Config.TEMP_CAMELSFR_DIR / "CAMELS_FR_time_series" / "daily"
     out_dir = Config.TIMESERIES_DIR / "camelsfr"
     
@@ -198,13 +198,13 @@ def process_camelsind():
     
     Config.create_dataset_dirs("camelsind")
     
-    #Process streamflow
+    #process streamflow
     csv_path = Config.TEMP_CAMELSIND_DIR / "streamflow_timeseries" / "streamflow_observed.csv"
     df = pd.read_csv(csv_path)
     df["date"] = pd.to_datetime(df[["year", "month", "day"]])
     df = df.drop(columns=["year", "month", "day"])
     
-    #Create NetCDF files
+    #create NetCDF files
     out_dir = Config.TIMESERIES_DIR / "camelsind"
     valid_sites = []
     
@@ -226,7 +226,7 @@ def process_camelsind():
     
     print(f"  Created {len(valid_sites)} NetCDF files")
     
-    #Copy shapefiles
+    #copy shapefiles
     source_path = Config.TEMP_CAMELSIND_DIR / "shapefiles_catchment" / "merged"
     output_base = Config.SHAPEFILES_DIR / "camelsind" / "camelsind_basin_shapes"
     
@@ -239,7 +239,7 @@ def process_camelsind():
                 shutil.copy2(source_file, output_base.with_suffix(ext))
                 copied += 1
     
-    #Create attributes CSV
+    #create attributes .csv
     topo_csv = Config.TEMP_CAMELSIND_DIR / "attributes_csv" / "camels_ind_topo.csv"
     name_csv = Config.TEMP_CAMELSIND_DIR / "attributes_csv" / "camels_ind_name.csv"
     output_csv = Config.ATTRIBUTES_DIR / "camelsind" / "attributes_other_camelsind.csv"
@@ -262,12 +262,91 @@ def process_camelsind():
         "cwc_site_name": "gauge_name"
     })
     
-    #Filter to valid sites
+    #filter to valid sites
     valid_prefixed = ["camelsind_" + str(s) for s in valid_sites]
     combined = combined[combined["gauge_id"].isin(valid_prefixed)]
     combined = combined[["gauge_id", "gauge_name", "country", "gauge_lat", "gauge_lon", "area"]]
     combined.to_csv(output_csv, index=False)
-      
+
+
+def process_camelsnz():
+    print("Processing CAMELS-NZ extension")
+    
+    Config.create_dataset_dirs("camelsnz")
+    
+    #process attributes
+    input_csv = Config.TEMP_CAMELSNZ_DIR / "1.CAMELS_NZ_Catchment_information.csv"
+    output_csv = Config.ATTRIBUTES_DIR / "camelsnz" / "attributes_other_camelsnz.csv"
+    
+    df = pd.read_csv(input_csv)
+    df_out = df.rename(columns={
+        "Station_ID": "gauge_id",
+        "Station Name": "gauge_name",
+        "Latitude (WGS 84)": "gauge_lat",
+        "Longitude(WGS 84)": "gauge_lon",
+        "uparea": "area"
+    })[["gauge_id", "gauge_name", "gauge_lat", "gauge_lon", "area"]]
+    
+    df_out["gauge_id"] = "camelsnz_" + df_out["gauge_id"].astype(str)
+    df_out["country"] = "New Zealand"
+    df_out = df_out[["gauge_id", "gauge_name", "country", "gauge_lat", "gauge_lon", "area"]]
+    df_out.to_csv(output_csv, index=False)
+    
+    #build area lookup for streamflow conversion
+    area_lookup = dict(zip(df_out["gauge_id"].astype(str), df_out["area"]))
+    
+    #copy shapefiles
+    input_shp = Config.TEMP_CAMELSNZ_DIR / "camel_stationsNZ.shp"
+    output_shp = Config.SHAPEFILES_DIR / "camelsnz" / "camelsnz_basin_shapes.shp"
+    
+    input_stem = input_shp.stem
+    output_stem = output_shp.stem
+    shapefile_extensions = [".shp", ".shx", ".dbf", ".prj", ".cpg"]
+    
+    for ext in shapefile_extensions:
+        src = input_shp.parent / f"{input_stem}{ext}"
+        dst = output_shp.parent / f"{output_stem}{ext}"
+        if src.exists():
+            shutil.copy(src, dst)
+    
+    #process streamflow
+    streamflow_csv_dir = Config.TEMP_CAMELSNZ_DIR
+    output_nc_dir = Config.TIMESERIES_DIR / "camelsnz"
+    
+    for csv_file in streamflow_csv_dir.glob("daily_flow_station_id_*.csv"):
+        station_id = csv_file.stem.split("_")[-1]
+        prefixed_id = f"camelsnz_{station_id}"
+        
+        if prefixed_id not in area_lookup:
+            continue
+        
+        try:
+            df_q = pd.read_csv(csv_file)
+            
+            if not {"time", "flow"}.issubset(df_q.columns):
+                continue
+            
+            if len(df_q) == 0:
+                continue
+            
+            area_km2 = area_lookup[prefixed_id]
+            dates = pd.to_datetime(df_q["time"]).dt.to_pydatetime()
+            
+            #Convert flow m3/s to mm/day
+            flow_m3s = df_q["flow"].astype(float)
+            flow_mmday = flow_m3s * 86400 / (area_km2 * 1e6) * 1000
+            
+            output_nc = output_nc_dir / f"camelsnz_{station_id}.nc"
+            
+            create_netcdf_timeseries(
+                dates, flow_mmday, output_nc, station_id,
+                Config.NETCDF_TIME_UNITS, Config.NETCDF_CALENDAR, "CAMELS-NZ"
+            )
+            
+        except (pd.errors.EmptyDataError, ValueError) as e:
+            print(f"Error with {csv_file.name}: {e}")
+            continue
+    
 
 ###---------------------------------------------------###
 ###                   Main                            ###
@@ -277,6 +356,7 @@ def main():
     process_grdc()
     process_camelsfr()
     process_camelsind()
+    process_camelsnz()
     
 if __name__ == "__main__":
     main()

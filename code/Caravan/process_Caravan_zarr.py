@@ -18,62 +18,64 @@ sys.stdout.reconfigure(line_buffering=True)
 ###                     Setup                         ###
 ###---------------------------------------------------###
 
-# Input directories
+#input directories and files
 input_dir_caravan = "/gpfs/work4/0/dynql/Caravan-Qual/auxiliary/Caravan/"
 caravan_timeseries_path = os.path.join(input_dir_caravan, "timeseries/netcdf/")
 caravan_site_info = os.path.join(input_dir_caravan, "caravan_site_info.csv")
 
-# Output directory
+#output directory
 output_dir = "/gpfs/work4/0/dynql/Caravan-Qual/"
 output_zarr_dir = os.path.join(output_dir, "Caravan.zarr")
 
-# Define time range
+#define time range
 START_DATE = pd.Timestamp('1951-01-01').date()
 END_DATE = pd.Timestamp('2025-09-30').date()
 
-# Define chunking strategy
+#chunking strategy
 ZARR_CHUNKS = {
     'time': 27302,
     'gauge_id': 500,
 }
 
-# Parallelization settings
-N_WORKERS = min(cpu_count() - 1, 64)
+#options
+N_WORKERS = min(cpu_count() - 1, 64) #parallelisation settings
+
 
 ###---------------------------------------------------###
 ###                   Functions                       ###
 ###---------------------------------------------------###
 
 def build_netcdf_file_map(base_path):
-    """Build a mapping of gauge_id to NetCDF file paths."""
+    """Build a mapping of gauge_id to NetCDF file paths"""
+    
     print(f"Building NetCDF file map from {base_path}")
     netcdf_files = glob.glob(os.path.join(base_path, "**/*.nc"), recursive=True)
     gauge_to_path = {}
     for file_path in netcdf_files:
         gauge_id = os.path.splitext(os.path.basename(file_path))[0]
-        gauge_to_path[gauge_id.lower()] = file_path  # Store with lowercase key
+        gauge_to_path[gauge_id.lower()] = file_path
     print(f"  Found {len(gauge_to_path)} NetCDF files\n")
     return gauge_to_path
 
 
 def load_gauge_metadata(caravan_site_info_csv, netcdf_file_map):
-    """Load gauge metadata and filter for valid gauges."""
+    """Load gauge metadata and filter for valid gauges"""
+    
     print(f"Loading gauge metadata from {caravan_site_info_csv}")
     df_gauge_meta = pd.read_csv(caravan_site_info_csv, dtype={"gauge_id": str})
     
     print(f"  Total gauges in CSV: {len(df_gauge_meta)}")
     
-    # Check for required columns
+    #check that required columns are present
     required_cols = ["gauge_id", "gauge_lat", "gauge_lon", "area"]
     missing_cols = [col for col in required_cols if col not in df_gauge_meta.columns]
     if missing_cols:
         raise ValueError(f"Missing required columns: {missing_cols}")
     
-    # Filter for valid gauges with area data
+    #filter for gauges with area data (needed for converting to m3/s)
     df_valid = df_gauge_meta[df_gauge_meta['area'].notna()].copy()
     print(f"  Gauges with area: {len(df_valid)}")
     
-    # Match using lowercase comparison
     gauge_ids = [gid for gid in df_valid['gauge_id'].values if gid.lower() in netcdf_file_map]
     gauge_ids_sorted = sorted(gauge_ids)
     
@@ -82,8 +84,9 @@ def load_gauge_metadata(caravan_site_info_csv, netcdf_file_map):
 
 
 def scan_netcdf_variables(netcdf_file_map, gauge_ids, sample_size=10):
-    """Scan a sample of NetCDF files to identify all variables."""
-    print(f"Scanning NetCDF files to identify variables (sampling {sample_size} files)...")
+    """Identify variables from a subset of netCDF files"""
+    
+    print(f"Scanning netCDF files to identify variables (sampling {sample_size} files)...")
     
     all_variables = set()
     sample_gauges = gauge_ids[:sample_size] if len(gauge_ids) > sample_size else gauge_ids
@@ -104,12 +107,12 @@ def scan_netcdf_variables(netcdf_file_map, gauge_ids, sample_size=10):
 
 
 def get_variable_attributes(netcdf_file_map, gauge_ids, variables):
-    """Extract variable attributes (units, long_name) from NetCDF files."""
-    print("Extracting variable attributes from NetCDF files...")
+    """Extract variable attributes (units, long_name) from a subset of netCDF files"""
+    
+    print("Scanning netCDF files to get variable attributes...")
     
     var_attrs = {var: {'units': 'unknown', 'long_name': var} for var in variables}
     
-    # Sample a few files to get attributes
     sample_gauges = gauge_ids[:5]
     
     for gauge_id in sample_gauges:
@@ -133,6 +136,7 @@ def get_variable_attributes(netcdf_file_map, gauge_ids, variables):
 def initialize_zarr_store(output_zarr_dir, gauge_ids, dates_sorted, variables, 
                          var_attrs, df_gauge_meta):
     """Initialize Zarr store with all variables and coordinates."""
+    
     print(f"Initializing Zarr store at {output_zarr_dir}")
     
     if os.path.exists(output_zarr_dir):
@@ -143,7 +147,7 @@ def initialize_zarr_store(output_zarr_dir, gauge_ids, dates_sorted, variables,
     n_time = len(dates_sorted)
     n_gauges = len(gauge_ids)
     
-    # Prepare gauge lat/lon arrays (aligned with gauge_ids)
+    #prepare gauge lat/lon arrays (aligned with gauge_ids)
     gauge_meta_dict = df_gauge_meta.set_index("gauge_id").to_dict("index")
     gauge_lats = np.array([gauge_meta_dict.get(gid, {}).get('gauge_lat', np.nan) 
                            for gid in gauge_ids], dtype='f4')
@@ -152,13 +156,13 @@ def initialize_zarr_store(output_zarr_dir, gauge_ids, dates_sorted, variables,
     gauge_areas = np.array([gauge_meta_dict.get(gid, {}).get('area', np.nan) 
                            for gid in gauge_ids], dtype='f4')
     
-    # Create dataset with coordinates
+    #create dataset with coordinates
     print(f"  Creating dataset with {len(variables)} variables...")
     
     data_vars = {}
     encoding = {}
     
-    # Add coordinate variables
+    #add coordinate variables
     data_vars['gauge_lat'] = xr.DataArray(
         gauge_lats,
         dims=['gauge_id'],
@@ -182,7 +186,7 @@ def initialize_zarr_store(output_zarr_dir, gauge_ids, dates_sorted, variables,
     encoding['gauge_lon'] = {'chunks': (ZARR_CHUNKS['gauge_id'],)}
     encoding['area'] = {'chunks': (ZARR_CHUNKS['gauge_id'],)}
     
-    # Add data variables
+    #add data variables
     for var_name in variables:
         data_vars[var_name] = xr.DataArray(
             np.full((n_gauges, n_time), np.nan, dtype='f4'),
@@ -203,14 +207,15 @@ def initialize_zarr_store(output_zarr_dir, gauge_ids, dates_sorted, variables,
                consolidated=False, zarr_format=2)
     
     print(f"  Zarr store initialized:")
-    print(f"    - {n_gauges} gauges")
-    print(f"    - {n_time} time steps")
-    print(f"    - {len(variables)} variables")
+    print(f"    {n_gauges} gauges")
+    print(f"    {n_time} time steps")
+    print(f"    {len(variables)} variables")
     print()
 
 
 def process_single_variable(var_info):
     """Process a single variable for all gauges"""
+    
     var_name, netcdf_file_map, gauge_ids, start_date, n_time, output_zarr_dir = var_info
     
     z = zarr.open_group(output_zarr_dir, mode='r+')
@@ -238,7 +243,6 @@ def process_single_variable(var_info):
                     if var_name not in ds.variables or 'date' not in ds.variables:
                         continue
                     
-                    # Parse dates
                     date_var = ds.variables['date']
                     dates_raw = date_var[:]
                     
@@ -262,7 +266,7 @@ def process_single_variable(var_info):
                     dates_nc_valid = dates_nc[valid_dates_mask]
                     var_data_valid = var_data[valid_dates_mask]
                     
-                    # Check date overlap
+                    #check date overlap
                     nc_start = dates_nc_valid.min().date()
                     nc_end = dates_nc_valid.max().date()
                     output_start = start_date
@@ -271,7 +275,7 @@ def process_single_variable(var_info):
                     if nc_end < output_start or nc_start > output_end:
                         continue
                     
-                    # Map to output time axis
+                    #map to output time axis
                     has_data = False
                     for j, (date_nc, value) in enumerate(zip(dates_nc_valid, var_data_valid)):
                         date_val = date_nc.date()
@@ -300,6 +304,7 @@ def process_single_variable(var_info):
 def populate_zarr_data(output_zarr_dir, gauge_ids, netcdf_file_map, 
                        variables, start_date, n_time):
     """Populate Zarr store by processing each variable in parallel"""
+    
     print(f"Processing {len(variables)} variables for {len(gauge_ids)} gauges using {N_WORKERS} workers...")
     
     var_infos = [
@@ -321,29 +326,29 @@ def populate_zarr_data(output_zarr_dir, gauge_ids, netcdf_file_map,
 
 if __name__ == "__main__":
     
-    print(f"=== Caravan NetCDF to Zarr Conversion ===\n")
+    print(f"Converting Caravan netcdfs to .zarr")
     
-    # Build file map and load metadata
+    #build file map and load metadata
     netcdf_file_map = build_netcdf_file_map(caravan_timeseries_path)
     df_gauge_meta, gauge_ids = load_gauge_metadata(caravan_site_info, netcdf_file_map)
     
-    # Scan NetCDF files to identify variables
+    #scan netcdf files to identify variables
     variables = scan_netcdf_variables(netcdf_file_map, gauge_ids, sample_size=20)
     var_attrs = get_variable_attributes(netcdf_file_map, gauge_ids, variables)
     
-    # Create date range
+    #create date range
     dates_sorted = pd.date_range(start=START_DATE, end=END_DATE, freq='D').date.tolist()
     n_time = len(dates_sorted)
     
-    # Initialize zarr store
+    #initialize zarr store
     initialize_zarr_store(output_zarr_dir, gauge_ids, dates_sorted, variables, 
                          var_attrs, df_gauge_meta)
     
-    # Populate zarr with data
+    #populate .zarr with data
     populate_zarr_data(output_zarr_dir, gauge_ids, netcdf_file_map, 
                       variables, START_DATE, n_time)
     
-    # Consolidate zarr metadata
+    #consolidate zarr metadata
     print("Consolidating Zarr metadata...")
     zarr.consolidate_metadata(output_zarr_dir)
     

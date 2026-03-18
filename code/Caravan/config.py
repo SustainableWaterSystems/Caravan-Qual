@@ -6,36 +6,37 @@ from datetime import datetime
 
 class Config:
     
-    # Base directories
+    #base directories
     BASE_DIR = Path("/gpfs/work4/0/dynql/Caravan-Qual/")
     CARAVAN_DIR = BASE_DIR / "auxiliary/Caravan/"
     AUX_DATA_DIR = BASE_DIR / "auxiliary"
     
-    # Temporary download directories
+    #temporary download directories
     RAW_CARAVAN_DIR = BASE_DIR / "Caravan-nc"
     TEMP_CAMELSFR_DIR = RAW_CARAVAN_DIR / "camels_fr"
     TEMP_CAMELSIND_DIR = RAW_CARAVAN_DIR / "camels_ind"
+    TEMP_CAMELSNZ_DIR = RAW_CARAVAN_DIR / "camels_nz"    
     
-    # Caravan subdirectories
+    #Caravan subdirectories
     LICENSES_DIR = CARAVAN_DIR / "licenses"
     ATTRIBUTES_DIR = CARAVAN_DIR / "attributes"
     SHAPEFILES_DIR = CARAVAN_DIR / "shapefiles"
     TIMESERIES_DIR = CARAVAN_DIR / "timeseries" / "netcdf"
     
-    # Output files
+    #otput files
     COMBINED_CARAVAN_ATTRS = ATTRIBUTES_DIR / "combined_attributes_caravan.csv"
     COMBINED_HYDROATLAS_ATTRS = ATTRIBUTES_DIR / "combined_attributes_hydroatlas.csv"
     COMBINED_OTHER_ATTRS = ATTRIBUTES_DIR / "combined_attributes_other.csv"
     SITE_INFO_OUTPUT = CARAVAN_DIR / "caravan_site_info.csv"
     
-    # Auxiliary data files
+    #auxiliary data files
     COUNTRY_SHP = AUX_DATA_DIR / "WorldBank" / "WB_countries_Admin0_10m.shp"
     HYDROBASIN_SHP = AUX_DATA_DIR / "HydroATLAS" / "BasinATLAS_v10_lev12.shp"
     RIVERS_GPKG = AUX_DATA_DIR / "geoglows_TDXhydro" / "global_streams_simplified.gpkg"
     BRANCH_MAP_CSV = AUX_DATA_DIR / "geoglows_TDXhydro" / "merged_branches.csv"
     CATCHMENTS_GPKG_DIR = AUX_DATA_DIR / "geoglows_TDXhydro" / "catchments_gpkg"
     
-    # NetCDF settings
+    #NetCDF settings
     NETCDF_TIME_UNITS = "days since 1951-01-01 00:00:00"
     NETCDF_CALENDAR = "proleptic_gregorian"
     NETCDF_START_YEAR = 1951
@@ -43,7 +44,7 @@ class Config:
     NETCDF_START_DATE = datetime(NETCDF_START_YEAR, 1, 1)
     NETCDF_END_DATE = datetime(NETCDF_END_YEAR, 12, 31)
     
-    # Processing options
+    #Processing options
     GET_LINKNO_FROM_GPKG = True
     SHOW_PROGRESS = True
 

@@ -224,9 +224,21 @@ create_caravan_dirs() {
 #mv LamaH-Ice_Caravan_Extension_v15/timeseries/netcdf/lamahice/* Caravan-nc/timeseries/netcdf/lamahice/
 #rm -rf LamaH-Ice_Caravan_Extension_v15/
 
+
+###Camels-NZ
+#echo "Downloading Camels-NZ"
+#mkdir -p Caravan-nc/camels_nz
+#cd Caravan-nc/camels_nz
+
+#download_and_extract "https://ndownloader.figshare.com/files/56902355" "CAMELS_NZ_Catchment_Atrributes.zip"
+#download_and_extract "https://ndownloader.figshare.com/files/56902358" "CAMELS_NZ_Shapefiles.zip"
+#download_and_extract "https://ndownloader.figshare.com/files/56902373" "CAMELS_NZ_daily_Streamflow.zip"
+
 ###----------------------------------------------------------------###
 ###              Process Caravan and extensions (python)           ###
 ###----------------------------------------------------------------###
+cd /gpfs/work4/0/dynql/Caravan-Qual/
+
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate /gpfs/home6/ejones/.conda/envs/myenv
 
@@ -234,8 +246,9 @@ conda activate /gpfs/home6/ejones/.conda/envs/myenv
 #python scripts/Caravan/process_extensions.py
 
 #rm -r Caravan-nc/camels_fr/ #remove Caravan-FR raw files
-#rm -r Caravan-nc/camels_ind/ #remove Caravan-IND raw files
+#rm -r Caravan-nc/camels_ind #remove Caravan-IND raw files
 #rm -r Caravan-nc/timeseries/netcdf/grdc_raw/ #remove (unprocessed) GRDC netcdfs
+#rm -r Caravan-nc/camels_nz/ #remove CAMELS-NZ raw files
 
 ###----------------------------------------------------------------###
 ###                 Relocate to auxiliary folder                   ###
@@ -260,8 +273,6 @@ conda activate /gpfs/home6/ejones/.conda/envs/myenv
 echo "Processing Caravan Zarr..."
 python scripts/Caravan/process_Caravan_zarr.py
 echo "Finished processing Caravan zarr!"
-
-python scripts/_misc/Caravan/check_Caravan_zarr.py
 
 
 

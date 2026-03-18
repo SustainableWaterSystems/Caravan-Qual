@@ -42,34 +42,35 @@ def combine_attribute_files(input_dir, patterns, output_files):
 
 
 def build_geodataframe(df, lon_col='gauge_lon', lat_col='gauge_lat', crs='EPSG:4326'):
-    """Build a GeoDataFrame from a DataFrame with coordinates"""
+    """Build a GeoDataFrame from coordinates"""
+    
     geometry = [Point(xy) for xy in zip(df[lon_col], df[lat_col])]
     gdf = gpd.GeoDataFrame(df, geometry=geometry, crs=crs)
     return gdf
 
 
 def assign_country_hydrobasin(sites_gdf, country_shp, hydrobasin_shp):
-    """Assign country and hydrobasin IDs to sites through spatial joins (first intersection, then nearest neighbour."""
+    """Assign country and hydrobasin IDs to gauge stations (spatial overlay, then nearest neighbour)."""
     
-    #Clean geometries
+    #clean geometries
     country_shp = country_shp.copy()
     hydrobasin_shp = hydrobasin_shp.copy()
     country_shp['geometry'] = country_shp['geometry'].buffer(0)
     hydrobasin_shp['geometry'] = hydrobasin_shp['geometry'].buffer(0)
     
-    #Reproject to metric CRS
+    #reproject to metric CRS
     sites_proj = sites_gdf.to_crs(epsg=3857)
     country_proj = country_shp.to_crs(epsg=3857)
     hydro_proj = hydrobasin_shp.to_crs(epsg=3857)
     
-    #Initialise columns
+    #initialise columns
     sites_proj['country_name'] = None
     sites_proj['hydrobasin_level12'] = None
     
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
         
-        #Spatial intersection
+        #spatial intersection
         sites_country = gpd.sjoin(
             sites_proj, country_proj[['NAME_EN', 'geometry']],
             how='left', predicate='intersects'
@@ -82,7 +83,7 @@ def assign_country_hydrobasin(sites_gdf, country_shp, hydrobasin_shp):
         ).groupby(level=0).first()
         sites_proj.loc[sites_hydro.index, 'hydrobasin_level12'] = sites_hydro['HYBAS_ID']
         
-        #Nearest neighbor for unmatched
+        #nearest neighbor for unmatched
         unmatched_country = sites_proj[sites_proj['country_name'].isna()]
         if len(unmatched_country) > 0:
             nearest_country = gpd.sjoin_nearest(
@@ -101,7 +102,7 @@ def assign_country_hydrobasin(sites_gdf, country_shp, hydrobasin_shp):
 
 
 def assign_linkno_from_catchments(sites_gdf, show_progress=True):
-    """Assign LINKNO via spatial overlay with catchment polygons"""
+    """Assign LINKNO to gauge stations (spatial overlay [with catchment polygons], then nearest neighbor)"""
     
     sites_gdf['LINKNO'] = pd.NA
     sites_proj = sites_gdf.to_crs(epsg=3857)
@@ -109,9 +110,12 @@ def assign_linkno_from_catchments(sites_gdf, show_progress=True):
     
     print(f"Processing {len(gpkg_files)} catchment files")
     
-    assigned = 0
+    assigned_overlap = 0
     total = len(sites_gdf)
-    iterator = tqdm(gpkg_files, desc="Processing catchments") if show_progress else gpkg_files
+    
+    #spatial overlap
+    print("Assigning by spatial overlap...")
+    iterator = tqdm(gpkg_files, desc="  Overlap assignment") if show_progress else gpkg_files
     
     for gpkg_file in iterator:
         try:
@@ -134,15 +138,19 @@ def assign_linkno_from_catchments(sites_gdf, show_progress=True):
             if catchments.empty:
                 continue
             
-            #spatial join
+            #spatial join for unassigned sites
             unassigned = sites_proj[sites_proj['LINKNO'].isna()]
             if unassigned.empty:
                 break
             
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                joined = gpd.sjoin(unassigned, catchments[['LINKNO', 'geometry']], 
-                                 how='left', predicate='within')
+                joined = gpd.sjoin(
+                    unassigned, 
+                    catchments[['LINKNO', 'geometry']], 
+                    how='left', 
+                    predicate='within'
+                )
             
             if 'LINKNO_right' in joined.columns:
                 matched = joined['LINKNO_right'].notna()
@@ -150,19 +158,122 @@ def assign_linkno_from_catchments(sites_gdf, show_progress=True):
                     first = joined[matched].groupby(level=0).first()
                     sites_proj.loc[first.index, 'LINKNO'] = first['LINKNO_right']
                     sites_gdf.loc[first.index, 'LINKNO'] = first['LINKNO_right']
-                    assigned += len(first)
+                    assigned_overlap += len(first)
         
         except Exception as e:
             print(f"Error with {gpkg_file.name}: {e}")
             continue
+    
+    print(f"  LINKNO assigned by overlap: {assigned_overlap}/{total} sites ({assigned_overlap/total*100:.1f}%)")
+    
+    #assign remaining sites by proximity
+    unassigned_after_overlap = sites_proj['LINKNO'].isna().sum()
+    
+    if unassigned_after_overlap > 0:
+        print(f"Assigning {unassigned_after_overlap} remaining sites by proximity...")
+        
+        assigned_proximity = 0
+        max_catchments_per_batch = 100000  #limit catchments loaded at once
+        
+        #process each gpkg file (but collect catchments in batches)
+        for gpkg_file in tqdm(gpkg_files, desc="  Processing regions") if show_progress else gpkg_files:
+            try:
+                #check for still unassigned sites
+                still_unassigned_wgs84 = sites_gdf[sites_gdf['LINKNO'].isna()]
+                if still_unassigned_wgs84.empty:
+                    break
+                
+                #read catchment metadata
+                meta = gpd.read_file(gpkg_file, rows=1)
+                
+                #get unassigned sites bounds in catchment CRS
+                sites_temp = still_unassigned_wgs84.to_crs(meta.crs)
+                bbox = tuple(sites_temp.total_bounds)
+                
+                #read catchments within bbox
+                catchments = gpd.read_file(gpkg_file, bbox=bbox)
+                
+                if catchments.empty:
+                    continue
+                
+                #get LINKNO column
+                linkno_col = next((c for c in ['LINKNO', 'linkno'] if c in catchments.columns), None)
+                if linkno_col is None:
+                    continue
+                
+                catchments = catchments[[linkno_col, 'geometry']].rename(columns={linkno_col: 'LINKNO'})
+                catchments['LINKNO'] = pd.to_numeric(catchments['LINKNO'], errors='coerce')
+                catchments = catchments.dropna(subset=['LINKNO'])
+                
+                if catchments.empty:
+                    continue
+                
+                catchments = catchments.to_crs(epsg=3857) #reproject to metric CRS
+                
+                #get (still) unassigned sites in this region (using expanded bbox)
+                still_unassigned = sites_proj[sites_proj['LINKNO'].isna()].copy()
+                
+                # Filter sites to those within reasonable distance of this catchment file
+                bbox_buffer = 100000  #100km in metres
+                minx, miny, maxx, maxy = catchments.total_bounds
+                region_bbox = (minx - bbox_buffer, miny - bbox_buffer, 
+                              maxx + bbox_buffer, maxy + bbox_buffer)
+                
+                #filter sites to this region
+                sites_in_region = still_unassigned.cx[region_bbox[0]:region_bbox[2], 
+                                                       region_bbox[1]:region_bbox[3]]
+                
+                if sites_in_region.empty:
+                    continue
+                
+                #nearest neighbor matching for this region
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    joined = gpd.sjoin_nearest(
+                        sites_in_region,
+                        catchments[['LINKNO', 'geometry']],
+                        how='left',
+                        distance_col='proximity_distance',
+                        max_distance=bbox_buffer
+                    )
+                
+                if 'LINKNO_right' in joined.columns:
+                    matched = joined['LINKNO_right'].notna()
+                    if matched.any():
+                        first = joined[matched].groupby(level=0).first()
+                        
+                        #only assign if not already assigned
+                        to_assign = first.index.intersection(sites_proj[sites_proj['LINKNO'].isna()].index)
+                        
+                        if len(to_assign) > 0:
+                            sites_proj.loc[to_assign, 'LINKNO'] = first.loc[to_assign, 'LINKNO_right']
+                            sites_gdf.loc[to_assign, 'LINKNO'] = first.loc[to_assign, 'LINKNO_right']
+                            assigned_proximity += len(to_assign)
+            
+            except Exception as e:
+                if show_progress:
+                    tqdm.write(f"Error with {gpkg_file.name}: {e}")
+                continue
+        
+        print(f"  LINKNO assigned by proximity: {assigned_proximity}/{unassigned_after_overlap} sites ({assigned_proximity/unassigned_after_overlap*100:.1f}%)")
+        
+        #report any sites still unassigned
+        still_unassigned_final = sites_proj['LINKNO'].isna().sum()
+        if still_unassigned_final > 0:
+            print(f"  Warning: {still_unassigned_final} sites remain unassigned (>100km from any catchment)")
+    else:
+        assigned_proximity = 0
+        print("  All sites assigned by overlap, no proximity assignment needed.")
     
     sites_gdf['LINKNO'] = pd.to_numeric(sites_gdf['LINKNO'], errors='coerce').astype('Int64')
     sites_gdf = sites_gdf.to_crs(epsg=4326)
     sites_gdf['gauge_lon'] = sites_gdf.geometry.x
     sites_gdf['gauge_lat'] = sites_gdf.geometry.y
     
-    print(f"  LINKNO assigned: {assigned}/{total} sites ({assigned/total*100:.1f}%)")
+    print(f"  Total LINKNO assigned: {assigned_overlap + assigned_proximity}/{total} sites ({(assigned_overlap + assigned_proximity)/total*100:.1f}%)")
+    
     return sites_gdf
+
 
 def snap_sites_to_rivers_within_linkno(sites_gdf, rivers, link_branch_dict, show_progress=True):
     """Snap sites to nearest river segment within the same LINKNO."""
@@ -177,11 +288,11 @@ def snap_sites_to_rivers_within_linkno(sites_gdf, rivers, link_branch_dict, show
         print("No sites have LINKNO assigned, skipping river snapping")
         return sites_gdf
     
-    #Reproject to metric CRS
+    #reproject gauge stations and rivers to metric CRS
     sites_proj = sites_with_linkno.to_crs(epsg=3857).copy()
     rivers_proj = rivers.to_crs(epsg=3857).copy()
     
-    #Initialise output columns
+    #initialise output columns
     sites_proj['gauge_lon_snapped'] = sites_proj.geometry.x
     sites_proj['gauge_lat_snapped'] = sites_proj.geometry.y
     sites_proj['snap_distance'] = 0.0
@@ -223,7 +334,7 @@ def snap_sites_to_rivers_within_linkno(sites_gdf, rivers, link_branch_dict, show
                 tqdm.write(f"Error processing LINKNO {linkno}: {str(e)}")
             continue
     
-    #Update main GeoDataFrame
+    #update GeoDataFrame
     sites_gdf.loc[sites_with_linkno.index, 'gauge_lon_snapped'] = sites_proj['gauge_lon_snapped']
     sites_gdf.loc[sites_with_linkno.index, 'gauge_lat_snapped'] = sites_proj['gauge_lat_snapped']
     sites_gdf.loc[sites_with_linkno.index, 'merged_LINKNO'] = sites_proj['merged_LINKNO']
@@ -249,7 +360,7 @@ def main():
 
     print("Processing gauge stations")
 
-    #Step 1. Combining attribute files
+    #step 1. Combining attribute files
     print("Combining attribute files...")
     patterns = [
         "attributes_caravan_*.csv",
@@ -264,29 +375,29 @@ def main():
     combine_attribute_files(Config.ATTRIBUTES_DIR, patterns, outputs)
     print(f"  Attribute files combined.")
         
-    #Step 2. Load sites
+    #step 2. Load sites
     print("Loading gauge stations...")
     sites_df = pd.read_csv(Config.COMBINED_OTHER_ATTRS)
     print(f"  Loaded {len(sites_df)} stations.")
     
-    #Step 3. Build GeoDataFrame
+    #step 3. Build GeoDataFrame
     print("Creating GeoDataFrame...")
     sites_gdf = build_geodataframe(sites_df)
     print(f"  GeoDataFrame created.")
     
-    #Step 4. Assign country and hydrobasin
+    #step 4. Assign country and hydrobasin
     print("Assigning country and hydrobasin...")
     country_shp = gpd.read_file(Config.COUNTRY_SHP)
     hydrobasin_shp = gpd.read_file(Config.HYDROBASIN_SHP)
     sites_gdf = assign_country_hydrobasin(sites_gdf, country_shp, hydrobasin_shp)
     print(f" Country and hydrobasin assigned.")
     
-    #Step 5: Assign LINKNO
+    #step 5: Assign LINKNO (overlap first, then proximity for unmatched)
     print("Assigning LINKNOs...")
     sites_gdf = assign_linkno_from_catchments(sites_gdf, Config.SHOW_PROGRESS)
     print(f"  LINKNOs assigned.")
     
-    #Step 6: Snap coordinates to rivers
+    #step 6: Snap coordinates to rivers
     print("Snapping coordinates to river network...")
     rivers = gpd.read_file(Config.RIVERS_GPKG).to_crs(epsg=3857)
     branch_map = pd.read_csv(Config.BRANCH_MAP_CSV)
@@ -300,12 +411,13 @@ def main():
     sites_gdf = snap_sites_to_rivers_within_linkno(sites_gdf, rivers, link_branch_dict, Config.SHOW_PROGRESS)
     print(f"  Coordinates snapped to river network...")
     
-    #Step 7. Save output
+    #step 7. Save output
     print("Saving results...")
     sites_gdf.to_csv(Config.SITE_INFO_OUTPUT, index=False)
     print(f"  Saved to: {Config.SITE_INFO_OUTPUT}")
     
-    #Summary
+    #summary
+    print(f"\n=== Final Summary ===")
     print(f"Total sites: {len(sites_gdf)}")
     
     if 'country_name' in sites_gdf.columns:
@@ -324,7 +436,7 @@ def main():
         assigned = sites_gdf['merged_LINKNO'].notna().sum()
         print(f"Snapped to rivers: {assigned} ({assigned/len(sites_gdf)*100:.1f}%)")
 
-    print("Gauge processing complete")
+    print("\nGauge processing complete")
 
 if __name__ == "__main__":
     main()
