@@ -70,7 +70,26 @@ def get_wq_units(param_name):
     return WQ_UNITS.get(param_name, 'unknown')
 
 
+def map_combined_flag(flag_value, imputation_method):
+    """Map flag and imputation_method columns to a combined integer flag: 0 = observed, 1 = LOD (direct substitution), 2 = LOD (ROS), 3 = outlier, 255 = missing"""
+    
+    flag_str = str(flag_value).strip() if pd.notna(flag_value) else ''
+    
+    if flag_str == '*':
+        return 3 #outlier
+    elif flag_str == '<':
+        method_str = str(imputation_method).strip().upper() if pd.notna(imputation_method) else ''
+        if method_str == 'ROS':
+            return 2 #ROS imputed
+        else:
+            return 1 #LOD/2 (default for censored)
+    else:
+        return 0  #observed
+
+
 def load_geoglows_data(gdb_path):
+    """Load GEOGLOWS v2 data and select columns for .zarr"""
+    
     print(f"Loading GeoGLOWS data from {gdb_path}")
     gdf = gpd.read_file(gdb_path)
     print(f"  Loaded {len(gdf)} features with {len(gdf.columns)} attributes")
@@ -125,6 +144,7 @@ def load_caravan_zarr(zarr_path):
 
 def load_gauge_metadata(caravan_site_info_csv, ds_caravan, gauge_id_to_idx):
     """Load gauge metadata and filter for gauges available in Caravan.zarr"""
+    
     print(f"Loading gauge metadata from {caravan_site_info_csv}")
     df_gauge_meta = pd.read_csv(caravan_site_info_csv, dtype={"gauge_id": str})
     
@@ -145,6 +165,8 @@ def load_gauge_metadata(caravan_site_info_csv, ds_caravan, gauge_id_to_idx):
 
 
 def load_linkages_and_wqms_ids(site_info_csv, catchment_attrs_csv, sites_to_process=None):
+    """Load wqms_id and linkages"""
+    
     df_linkages = pd.read_csv(site_info_csv, dtype={"wqms_id": str, "LINKNO": "Int64", "merged_LINKNO": "Int64", "gauge_id": str})
     
     #check for lat/lon columns
@@ -176,6 +198,8 @@ def load_linkages_and_wqms_ids(site_info_csv, catchment_attrs_csv, sites_to_proc
 
 
 def merge_geoglows_attributes(df_attrs, df_geoglows):
+    """Merge geoglows attributes with existing catchment attributes"""
+    
     print(f"Merging GeoGLOWS attributes with existing catchment attributes...")
     
     #get LINKNO values that exist in both datasets
@@ -189,11 +213,15 @@ def merge_geoglows_attributes(df_attrs, df_geoglows):
 
 
 def get_param_names(csv_dir):
+    """Get parameter names from the water quality .csv directory"""
+    
     param_files = [f for f in os.listdir(csv_dir) if f.lower().endswith(".csv")]
     return sorted([os.path.splitext(f)[0] for f in param_files])
 
 
 def load_weather_variables(weather_zarr_path):    
+    """Load ERA5-Land weather variables from the .zarr"""
+    
     print(f"Loading weather variables from {weather_zarr_path}")
     ds_weather = xr.open_zarr(weather_zarr_path)
     weather_vars = list(ds_weather.data_vars.keys())
@@ -208,8 +236,8 @@ def load_weather_variables(weather_zarr_path):
 
 def initialize_zarr_store(output_zarr_dir, gauge_ids, wqms_ids, dates_sorted, wq_params, 
                          df_attrs, df_gauge_meta, df_linkages, weather_vars):
-    """Initialize Zarr store with streamflow, water quality, catchment attributes, AND weather data."""
-    print(f"Initialising Zarr store at {output_zarr_dir}")
+    """initialiae Zarr with streamflow, water quality (with flags and detection limits), catchment attributes, and weather data."""
+    print(f"Initialising Zarr at {output_zarr_dir}")
     
     if os.path.exists(output_zarr_dir):
         print(f"  Clearing existing store...")
@@ -276,69 +304,88 @@ def initialize_zarr_store(output_zarr_dir, gauge_ids, wqms_ids, dates_sorted, wq
     ds_streamflow.to_zarr(output_zarr_dir, mode='w', encoding=encoding, consolidated=False, zarr_format=2)
     del ds_streamflow
     
-    #create water quality arrays with coordinates
-    print(f"  Writing {len(wq_params)} water quality parameter arrays with coordinates...")
+    #create water quality arrays: obs value, combined flag, and detection limit
+    print(f"  Writing {len(wq_params)} water quality parameter arrays (with flag and detection limit)...")
     
     for idx, param_name in enumerate(wq_params):
         print(f"    - {param_name} ({idx+1}/{len(wq_params)})")
         
-        #get units per parameter
         units = get_wq_units(param_name)
+        wqms_coord = np.array(wqms_ids, dtype='U50')
         
         ds_wq = xr.Dataset({
             param_name: xr.DataArray(
                 np.full((n_wqms, n_time), np.nan, dtype='f4'),
                 dims=['wqms_id', 'time'],
-                coords={
-                    'wqms_id': np.array(wqms_ids, dtype='U50'), 
-                    'time': time_coord
-                },
+                coords={'wqms_id': wqms_coord, 'time': time_coord},
                 attrs={'units': units, 'long_name': param_name}
+            ),
+            f'{param_name}_flag': xr.DataArray(
+                np.full((n_wqms, n_time), 255, dtype='u1'),
+                dims=['wqms_id', 'time'],
+                coords={'wqms_id': wqms_coord, 'time': time_coord},
+                attrs={
+                    'long_name': f'{param_name} observation flag',
+                    'flag_values': '0, 1, 2, 3, 255',
+                    'flag_meanings': '0=observed, 1=below_detection_LOD2, 2=below_detection_ROS, 3=outlier_flagged, 255=missing'
+                }
+            ),
+            f'{param_name}_detection_limit': xr.DataArray(
+                np.full((n_wqms, n_time), np.nan, dtype='f4'),
+                dims=['wqms_id', 'time'],
+                coords={'wqms_id': wqms_coord, 'time': time_coord},
+                attrs={'units': units, 'long_name': f'{param_name} detection limit'}
             )
         })
         
-        #add wqms coordinates only on first parameter to avoid duplication
+        #add wqms coordinates on first parameter
         if idx == 0:
             ds_wq['wqms_lat'] = xr.DataArray(
                 wqms_lats,
                 dims=['wqms_id'],
-                coords={'wqms_id': np.array(wqms_ids, dtype='U50')},
+                coords={'wqms_id': wqms_coord},
                 attrs={'units': 'degrees_north', 'long_name': 'WQMS station latitude'}
             )
             ds_wq['wqms_lon'] = xr.DataArray(
                 wqms_lons,
                 dims=['wqms_id'],
-                coords={'wqms_id': np.array(wqms_ids, dtype='U50')},
+                coords={'wqms_id': wqms_coord},
                 attrs={'units': 'degrees_east', 'long_name': 'WQMS station longitude'}
             )
             ds_wq['country_name'] = xr.DataArray(
                 wqms_countries,
                 dims=['wqms_id'],
-                coords={'wqms_id': np.array(wqms_ids, dtype='U50')},
+                coords={'wqms_id': wqms_coord},
                 attrs={'long_name': 'Country name'}
             )
             ds_wq['hydrobasin_level12'] = xr.DataArray(
                 wqms_hydrobasins,
                 dims=['wqms_id'],
-                coords={'wqms_id': np.array(wqms_ids, dtype='U50')},
+                coords={'wqms_id': wqms_coord},
                 attrs={'long_name': 'HydroBasin Level 12 ID'}
             )
             ds_wq['merged_LINKNO'] = xr.DataArray(
                 wqms_merged_linknos,
                 dims=['wqms_id'],
-                coords={'wqms_id': np.array(wqms_ids, dtype='U50')},
+                coords={'wqms_id': wqms_coord},
                 attrs={'long_name': 'Merged LINKNO'}
             )
             encoding = {
-                param_name: {'chunks': (ZARR_CHUNKS['wqms_id'], ZARR_CHUNKS['time'])},
-                'wqms_lat': {'chunks': (ZARR_CHUNKS['wqms_id'],)},
-                'wqms_lon': {'chunks': (ZARR_CHUNKS['wqms_id'],)},
-                'country_name': {'chunks': (ZARR_CHUNKS['wqms_id'],)},
+                param_name:                          {'chunks': (ZARR_CHUNKS['wqms_id'], ZARR_CHUNKS['time'])},
+                f'{param_name}_flag':                {'chunks': (ZARR_CHUNKS['wqms_id'], ZARR_CHUNKS['time'])},
+                f'{param_name}_detection_limit':     {'chunks': (ZARR_CHUNKS['wqms_id'], ZARR_CHUNKS['time'])},
+                'wqms_lat':        {'chunks': (ZARR_CHUNKS['wqms_id'],)},
+                'wqms_lon':        {'chunks': (ZARR_CHUNKS['wqms_id'],)},
+                'country_name':    {'chunks': (ZARR_CHUNKS['wqms_id'],)},
                 'hydrobasin_level12': {'chunks': (ZARR_CHUNKS['wqms_id'],)},
-                'merged_LINKNO': {'chunks': (ZARR_CHUNKS['wqms_id'],)}
+                'merged_LINKNO':   {'chunks': (ZARR_CHUNKS['wqms_id'],)}
             }
         else:
-            encoding = {param_name: {'chunks': (ZARR_CHUNKS['wqms_id'], ZARR_CHUNKS['time'])}}
+            encoding = {
+                param_name:                      {'chunks': (ZARR_CHUNKS['wqms_id'], ZARR_CHUNKS['time'])},
+                f'{param_name}_flag':            {'chunks': (ZARR_CHUNKS['wqms_id'], ZARR_CHUNKS['time'])},
+                f'{param_name}_detection_limit': {'chunks': (ZARR_CHUNKS['wqms_id'], ZARR_CHUNKS['time'])}
+            }
         
         ds_wq.to_zarr(output_zarr_dir, mode='a', encoding=encoding, consolidated=False, zarr_format=2)
         del ds_wq
@@ -353,7 +400,6 @@ def initialize_zarr_store(output_zarr_dir, gauge_ids, wqms_ids, dates_sorted, wq
         
         values = df_attrs_clean[col].values
         
-        #determine dtype
         if df_attrs_clean[col].dtype == 'object' or df_attrs_clean[col].dtype.name.startswith('string'):
             max_len = df_attrs_clean[col].astype(str).str.len().max()
             dtype = f'U{max(max_len, 10)}'
@@ -362,7 +408,6 @@ def initialize_zarr_store(output_zarr_dir, gauge_ids, wqms_ids, dates_sorted, wq
         else:
             dtype = 'f4'
         
-        #store all attributes
         attr_data_vars[col] = xr.DataArray(
             values.astype(dtype),
             dims=['LINKNO'],
@@ -398,13 +443,13 @@ def initialize_zarr_store(output_zarr_dir, gauge_ids, wqms_ids, dates_sorted, wq
         del ds_weather
     
     print(f"  Zarr store initialised:")
-    print(f"    - {n_gauges} gauges")
-    print(f"    - {n_wqms} WQMS stations")
-    print(f"    - {n_linkno} LINKNOs")
-    print(f"    - {n_time} time steps")
-    print(f"    - {len(wq_params)} water quality parameters")
-    print(f"    - {len(attr_data_vars)} catchment attributes")
-    print(f"    - {len(weather_vars)} weather variables")
+    print(f"    {n_gauges} gauges")
+    print(f"    {n_wqms} WQMS stations")
+    print(f"    {n_linkno} LINKNOs")
+    print(f"    {n_time} time steps")
+    print(f"    {len(wq_params)} water quality parameters (each with flag and detection limit)")
+    print(f"    {len(attr_data_vars)} catchment attributes")
+    print(f"    {len(weather_vars)} weather variables")
     print()
 
 ###---------------------------------------------------###
@@ -414,6 +459,7 @@ def initialize_zarr_store(output_zarr_dir, gauge_ids, wqms_ids, dates_sorted, wq
 def process_streamflow_data(output_zarr_dir, gauge_ids, ds_caravan, gauge_id_to_idx, 
                            gauge_id_to_area, start_date, n_time):
     """Process streamflow data from Caravan.zarr into Caravan-Qual.zarr"""
+    
     print(f"Processing streamflow data for {len(gauge_ids)} gauges from Caravan.zarr")
     
     z = zarr.open_group(output_zarr_dir, mode='r+')
@@ -451,12 +497,8 @@ def process_streamflow_data(output_zarr_dir, gauge_ids, ds_caravan, gauge_id_to_
             
             try:
                 gauge_idx = gauge_id_to_idx[gauge_id_lower]
-                
-                #extract streamflow for this gauge
-                sf_series = ds_caravan.streamflow.isel(gauge_id=gauge_idx).to_pandas()
-                
-                #convert from mm/day to m3/s
-                sf_m3s = sf_series * conversion_factor
+                sf_series = ds_caravan.streamflow.isel(gauge_id=gauge_idx).to_pandas() #extract streamflow from gauge
+                sf_m3s = sf_series * conversion_factor #convert from mm/day to m3/s
                 
                 #write to output array
                 records_written = 0
@@ -486,22 +528,81 @@ def process_streamflow_data(output_zarr_dir, gauge_ids, ds_caravan, gauge_id_to_
     print()
 
 
+def _aggregate_daily(df_site):
+    """Aggregate multiple same-day observations for a single station to one row per day."""
+    
+    result_rows = []
+    for date_val, day_df in df_site.groupby('dates'):
+        
+        #aggregate obs
+        obs_vals = day_df['obs'].dropna()
+        obs_agg = obs_vals.mean() if len(obs_vals) > 0 else np.nan
+        
+        #aggregate flag with priority: * > < > ""
+        flags = day_df['flag'].fillna('').astype(str).str.strip() if 'flag' in day_df.columns else pd.Series([''] * len(day_df))
+        if (flags == '*').any():
+            flag_agg = '*'
+        elif (flags == '<').any():
+            flag_agg = '<'
+        else:
+            flag_agg = ''
+        
+        #aggregate imputation_method: first non-empty
+        if 'imputation_method' in day_df.columns:
+            methods = day_df['imputation_method'].fillna('').astype(str).str.strip()
+            non_empty = methods[methods != '']
+            method_agg = non_empty.iloc[0] if len(non_empty) > 0 else ''
+        else:
+            method_agg = ''
+        
+        #aggregate detection_limit: mean of non-NaN
+        if 'detection_limit' in day_df.columns:
+            dl_vals = pd.to_numeric(day_df['detection_limit'], errors='coerce').dropna()
+            dl_agg = dl_vals.mean() if len(dl_vals) > 0 else np.nan
+        else:
+            dl_agg = np.nan
+        
+        result_rows.append({
+            'dates':            date_val,
+            'obs':              obs_agg,
+            'flag':             flag_agg,
+            'imputation_method': method_agg,
+            'detection_limit':  dl_agg
+        })
+    
+    return pd.DataFrame(result_rows)
+
+
 def process_single_wq_parameter(param_name, output_zarr_dir, wqms_ids, csv_dir, 
                                 start_date, n_time, chunk_size, sites_to_process=None):
-    """Process a single water quality parameter and write to Zarr store."""
+    """process a single water quality parameter (with flag and detection limit). Multiple observations for the same wqms_id and date are aggregated to a single daily value"""
     
     csv_path = os.path.join(csv_dir, f"{param_name}.csv")
-    wqms_to_idx = {w: i for i, w in enumerate(wqms_ids)}
     
     try:
-        df_param = pd.read_csv(csv_path, parse_dates=["dates"], date_format="%Y-%m-%d")
+        df_param = pd.read_csv(csv_path, parse_dates=["dates"], date_format="%Y-%m-%d", low_memory=False)
         df_param["dates"] = pd.to_datetime(df_param["dates"], errors="coerce")
+        
+        #normalise column names: support both 'flag' and legacy 'limit_flag'
+        if 'limit_flag' in df_param.columns and 'flag' not in df_param.columns:
+            df_param = df_param.rename(columns={'limit_flag': 'flag'})
+        
+        #ensure expected columns exist
+        for col in ('flag', 'imputation_method', 'detection_limit'):
+            if col not in df_param.columns:
+                df_param[col] = np.nan if col == 'detection_limit' else ''
+        
+        df_param['flag'] = df_param['flag'].fillna('').astype(str).str.strip()
+        df_param['imputation_method'] = df_param['imputation_method'].fillna('').astype(str).str.strip()
+        df_param['detection_limit'] = pd.to_numeric(df_param['detection_limit'], errors='coerce')
         
         if sites_to_process is not None:
             df_param = df_param[df_param["wqms_id"].isin(sites_to_process)]
         
         z = zarr.open_group(output_zarr_dir, mode='r+')
-        wq_array = z[param_name]
+        wq_array        = z[param_name]
+        flag_array      = z[f'{param_name}_flag']
+        dl_array        = z[f'{param_name}_detection_limit']
         
         grouped = df_param.groupby("wqms_id")
         
@@ -513,26 +614,41 @@ def process_single_wq_parameter(param_name, output_zarr_dir, wqms_ids, csv_dir,
             end_idx = min(start_idx + chunk_size, len(wqms_ids))
             chunk_wqms = wqms_ids[start_idx:end_idx]
             
-            chunk_data = np.full((len(chunk_wqms), n_time), np.nan, dtype='f4')
+            chunk_data  = np.full((len(chunk_wqms), n_time), np.nan, dtype='f4')
+            chunk_flags = np.full((len(chunk_wqms), n_time), 255, dtype='u1')  # 255 = missing
+            chunk_dl    = np.full((len(chunk_wqms), n_time), np.nan, dtype='f4')
             
             for i, wqms_id in enumerate(chunk_wqms):
                 if wqms_id not in grouped.groups:
                     continue
                 
-                df_obs = grouped.get_group(wqms_id)
-                df_obs = df_obs[df_obs["obs"].notna()]
+                df_site = grouped.get_group(wqms_id)
                 
-                if df_obs.empty:
-                    continue
+                #aggregate to one value per day
+                df_daily = _aggregate_daily(df_site)
                 
-                for _, row in df_obs.iterrows():
+                for _, row in df_daily.iterrows():
                     days_from_start = (row["dates"].date() - start_date).days
-                    if 0 <= days_from_start < n_time:
-                        chunk_data[i, days_from_start] = row["obs"]
+                    if not (0 <= days_from_start < n_time):
+                        continue
+                    
+                    obs_value = row["obs"]
+                    if pd.notna(obs_value):
+                        chunk_data[i, days_from_start]  = obs_value
+                        chunk_flags[i, days_from_start] = map_combined_flag(
+                            row["flag"], row["imputation_method"]
+                        )
+                    
+                    dl_value = row["detection_limit"]
+                    if pd.notna(dl_value):
+                        chunk_dl[i, days_from_start] = dl_value
                 
-                stations_processed += 1
+                if not df_site.empty:
+                    stations_processed += 1
             
-            wq_array[start_idx:end_idx, :] = chunk_data
+            wq_array[start_idx:end_idx, :]   = chunk_data
+            flag_array[start_idx:end_idx, :]  = chunk_flags
+            dl_array[start_idx:end_idx, :]    = chunk_dl
         
         return (param_name, stations_processed, True, None)
     
@@ -541,7 +657,9 @@ def process_single_wq_parameter(param_name, output_zarr_dir, wqms_ids, csv_dir,
 
 
 def process_wq_data(output_zarr_dir, wqms_ids, csv_dir, wq_params, start_date, n_time, sites_to_process=None):
-    print(f"Processing water quality data for {len(wq_params)} parameters using {N_WORKERS} workers...")
+    """process zarr in parallel"""
+    
+    print(f"Processing water quality data (with flag and detection limit) for {len(wq_params)} parameters using {N_WORKERS} workers...")
     
     chunk_size = ZARR_CHUNKS['wqms_id']
     
@@ -573,6 +691,7 @@ def process_wq_data(output_zarr_dir, wqms_ids, csv_dir, wq_params, start_date, n
 
 
 def populate_weather_data(input_weather_path, output_zarr_dir, linkno_values, weather_vars, start_date, end_date):
+    """add weather data to zarr"""
     
     print(f"Processing weather data for {len(weather_vars)} variables...")
     
@@ -624,11 +743,12 @@ def populate_weather_data(input_weather_path, output_zarr_dir, linkno_values, we
 
 
 ###---------------------------------------------------------###
-###       Enrich metadata for better station selection      ###
+###              Detailed metadata for each station         ###
 ###---------------------------------------------------------###
 
 def process_station_metadata(wqms_id, wqms_to_idx, output_zarr_dir, wq_vars):
-    """Process metadata for a single station."""
+    """Process metadata for a single station, per parameter."""
+    
     try:
         ds = xr.open_zarr(output_zarr_dir, consolidated=False)
         idx = wqms_to_idx[wqms_id]
@@ -636,6 +756,10 @@ def process_station_metadata(wqms_id, wqms_to_idx, output_zarr_dir, wq_vars):
         all_dates = []
         param_counts = {}
         param_obs = {}
+        param_obs_observed = {}
+        param_obs_lod2 = {}
+        param_obs_ros = {}
+        param_obs_outlier = {}
         param_starts = {}
         param_ends = {}
         
@@ -648,13 +772,29 @@ def process_station_metadata(wqms_id, wqms_to_idx, output_zarr_dir, wq_vars):
             param_obs[param_name] = int(obs_count)
             param_counts[param_name] = obs_count
             
+            flag_var = f'{param_name}_flag'
+            if flag_var in ds:
+                flag_series = ds[flag_var].isel(wqms_id=idx).to_pandas()
+                valid_mask = series.notna()
+                flags_valid = flag_series[valid_mask]
+                
+                param_obs_observed[param_name] = int((flags_valid == 0).sum())
+                param_obs_lod2[param_name]     = int((flags_valid == 1).sum())
+                param_obs_ros[param_name]      = int((flags_valid == 2).sum())
+                param_obs_outlier[param_name]  = int((flags_valid == 3).sum())
+            else:
+                param_obs_observed[param_name] = int(obs_count)
+                param_obs_lod2[param_name]     = 0
+                param_obs_ros[param_name]       = 0
+                param_obs_outlier[param_name]   = 0
+            
             if obs_count > 0:
                 param_starts[param_name] = valid_data.index.min().strftime('%Y-%m-%d')
-                param_ends[param_name] = valid_data.index.max().strftime('%Y-%m-%d')
+                param_ends[param_name]   = valid_data.index.max().strftime('%Y-%m-%d')
                 all_dates.extend(valid_data.index.tolist())
             else:
                 param_starts[param_name] = None
-                param_ends[param_name] = None
+                param_ends[param_name]   = None
         
         total_obs = int(sum(param_counts.values()))
         
@@ -686,6 +826,10 @@ def process_station_metadata(wqms_id, wqms_to_idx, output_zarr_dir, wq_vars):
             'parameters_measured': parameters_measured,
             'most_observed_parameter': most_observed_parameter,
             'param_obs': param_obs,
+            'param_obs_observed': param_obs_observed,
+            'param_obs_lod2': param_obs_lod2,
+            'param_obs_ros': param_obs_ros,
+            'param_obs_outlier': param_obs_outlier,
             'param_starts': param_starts,
             'param_ends': param_ends
         }
@@ -696,15 +840,19 @@ def process_station_metadata(wqms_id, wqms_to_idx, output_zarr_dir, wq_vars):
 
 
 def add_observation_metadata_to_linkages(output_zarr_dir, df_linkages, wqms_ids):
-    """Add comprehensive observation metadata to the linkages dataframe using parallel processing."""
+    """add comprehensive observation metadata to the linkages dataframe using parallel processing."""
+    
     print("Calculating observation metadata for each WQMS station (parallelised)...")
     
     ds = xr.open_zarr(output_zarr_dir, consolidated=False)
-    wq_vars = [v for v in ds.data_vars if v not in ['streamflow', 'wqms_lat', 'wqms_lon', 'gauge_lat', 'gauge_lon', 
-                                                      'country_name', 'hydrobasin_level12', 'merged_LINKNO']]
-
-    #weather variables identified as those with LINKNO dimension
-    wq_vars = [v for v in wq_vars if 'wqms_id' in ds[v].dims]
+    
+    #only water quality variables
+    all_vars = list(ds.data_vars)
+    wq_vars = [v for v in all_vars if not v.endswith('_flag') and
+               not v.endswith('_detection_limit') and
+               v not in ['streamflow', 'wqms_lat', 'wqms_lon', 'gauge_lat', 'gauge_lon', 
+                        'country_name', 'hydrobasin_level12', 'merged_LINKNO'] and
+               'wqms_id' in ds[v].dims]
     ds.close()
     
     wqms_to_idx = {w: i for i, w in enumerate(wqms_ids)}
@@ -729,48 +877,60 @@ def add_observation_metadata_to_linkages(output_zarr_dir, df_linkages, wqms_ids)
     
     print(f"  Successfully processed {len(results):,} stations")
     
-    total_obs_dict = {r['wqms_id']: r['total_observations'] for r in results}
-    start_date_dict = {r['wqms_id']: r['start_date'] for r in results}
-    end_date_dict = {r['wqms_id']: r['end_date'] for r in results}
-    observation_years_dict = {r['wqms_id']: r['observation_years'] for r in results}
-    parameters_measured_dict = {r['wqms_id']: r['parameters_measured'] for r in results}
-    most_observed_parameter_dict = {r['wqms_id']: r['most_observed_parameter'] for r in results}
+    total_obs_dict            = {r['wqms_id']: r['total_observations']      for r in results}
+    start_date_dict           = {r['wqms_id']: r['start_date']              for r in results}
+    end_date_dict             = {r['wqms_id']: r['end_date']                for r in results}
+    observation_years_dict    = {r['wqms_id']: r['observation_years']       for r in results}
+    parameters_measured_dict  = {r['wqms_id']: r['parameters_measured']     for r in results}
+    most_observed_param_dict  = {r['wqms_id']: r['most_observed_parameter'] for r in results}
     
-    param_obs_dict = {param: {} for param in wq_vars}
-    param_start_dict = {param: {} for param in wq_vars}
-    param_end_dict = {param: {} for param in wq_vars}
+    param_obs_dict         = {param: {} for param in wq_vars}
+    param_obs_observed_dict = {param: {} for param in wq_vars}
+    param_obs_lod2_dict    = {param: {} for param in wq_vars}
+    param_obs_ros_dict     = {param: {} for param in wq_vars}
+    param_obs_outlier_dict = {param: {} for param in wq_vars}
+    param_start_dict       = {param: {} for param in wq_vars}
+    param_end_dict         = {param: {} for param in wq_vars}
     
     for r in results:
         for param_name, obs_count in r['param_obs'].items():
             param_obs_dict[param_name][r['wqms_id']] = obs_count
+        for param_name, obs_count in r['param_obs_observed'].items():
+            param_obs_observed_dict[param_name][r['wqms_id']] = obs_count
+        for param_name, obs_count in r['param_obs_lod2'].items():
+            param_obs_lod2_dict[param_name][r['wqms_id']] = obs_count
+        for param_name, obs_count in r['param_obs_ros'].items():
+            param_obs_ros_dict[param_name][r['wqms_id']] = obs_count
+        for param_name, obs_count in r['param_obs_outlier'].items():
+            param_obs_outlier_dict[param_name][r['wqms_id']] = obs_count
         for param_name, start_date in r['param_starts'].items():
             param_start_dict[param_name][r['wqms_id']] = start_date
         for param_name, end_date in r['param_ends'].items():
             param_end_dict[param_name][r['wqms_id']] = end_date
     
-    df_linkages['total_observations'] = df_linkages['wqms_id'].map(total_obs_dict)
-    df_linkages['start_date'] = df_linkages['wqms_id'].map(start_date_dict)
-    df_linkages['end_date'] = df_linkages['wqms_id'].map(end_date_dict)
-    df_linkages['observation_years'] = df_linkages['wqms_id'].map(observation_years_dict)
-    df_linkages['parameters_measured'] = df_linkages['wqms_id'].map(parameters_measured_dict)
-    df_linkages['most_observed_parameter'] = df_linkages['wqms_id'].map(most_observed_parameter_dict)
+    df_linkages['total_observations']   = df_linkages['wqms_id'].map(total_obs_dict)
+    df_linkages['start_date']           = df_linkages['wqms_id'].map(start_date_dict)
+    df_linkages['end_date']             = df_linkages['wqms_id'].map(end_date_dict)
+    df_linkages['observation_years']    = df_linkages['wqms_id'].map(observation_years_dict)
+    df_linkages['parameters_measured']  = df_linkages['wqms_id'].map(parameters_measured_dict)
+    df_linkages['most_observed_parameter'] = df_linkages['wqms_id'].map(most_observed_param_dict)
     
     param_dfs = []
     
     for param_name, obs_dict in param_obs_dict.items():
-        param_dfs.append(
-            pd.Series(df_linkages['wqms_id'].map(obs_dict), name=f'obs_{param_name}')
-        )
-    
+        param_dfs.append(pd.Series(df_linkages['wqms_id'].map(obs_dict),          name=f'obs_{param_name}'))
+    for param_name, obs_dict in param_obs_observed_dict.items():
+        param_dfs.append(pd.Series(df_linkages['wqms_id'].map(obs_dict),          name=f'obs_{param_name}_observed'))
+    for param_name, obs_dict in param_obs_lod2_dict.items():
+        param_dfs.append(pd.Series(df_linkages['wqms_id'].map(obs_dict),          name=f'obs_{param_name}_LOD2'))
+    for param_name, obs_dict in param_obs_ros_dict.items():
+        param_dfs.append(pd.Series(df_linkages['wqms_id'].map(obs_dict),          name=f'obs_{param_name}_ROS'))
+    for param_name, obs_dict in param_obs_outlier_dict.items():
+        param_dfs.append(pd.Series(df_linkages['wqms_id'].map(obs_dict),          name=f'obs_{param_name}_outlier'))
     for param_name, start_dict in param_start_dict.items():
-        param_dfs.append(
-            pd.Series(df_linkages['wqms_id'].map(start_dict), name=f'start_{param_name}')
-        )
-    
+        param_dfs.append(pd.Series(df_linkages['wqms_id'].map(start_dict),        name=f'start_{param_name}'))
     for param_name, end_dict in param_end_dict.items():
-        param_dfs.append(
-            pd.Series(df_linkages['wqms_id'].map(end_dict), name=f'end_{param_name}')
-        )
+        param_dfs.append(pd.Series(df_linkages['wqms_id'].map(end_dict),          name=f'end_{param_name}'))
     
     df_params = pd.concat(param_dfs, axis=1)
     df_linkages = pd.concat([df_linkages, df_params], axis=1)
@@ -823,6 +983,7 @@ def create_linkages(df_linkages, output_wq_path, sites_to_process=None):
         df_wq = df_linkages[df_linkages["wqms_id"].isin(sites_to_process)].copy()
     
     df_wq.to_parquet(output_wq_path, index=False, compression="snappy")
+
 
 ###---------------------------------------------------###
 ###                    Runner                         ###

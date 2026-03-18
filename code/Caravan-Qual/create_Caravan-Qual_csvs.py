@@ -15,55 +15,60 @@ sys.stdout.reconfigure(line_buffering=True)
 ###                     Setup                         ###
 ###---------------------------------------------------###
 
-#Define input directories and files
+#input directories and files
 input_dir = "/gpfs/work4/0/dynql/Caravan-Qual/"
 
 site_info = os.path.join(input_dir, "wqms_site_info.csv")
 variable_list_path = os.path.join(input_dir, "auxiliary", "wq_data", "wq_variable_list.csv")
 combined_wq_file = os.path.join(input_dir, "auxiliary", "wq_data", "combined_wqms_dataset.csv")
 
-#Path to Caravan.zarr
 caravan_zarr_path = os.path.join(input_dir, "Caravan.zarr")
 caravan_attributes = os.path.join(input_dir, "caravan_site_info.csv")
 
-#Output folder (for .csv files)
+#output directory (for .csv files)
 csv_dir = os.path.join(input_dir, "wqms-csv")
 os.makedirs(csv_dir, exist_ok=True)
 
-#Distance threshold (km) for linking to streamflow gauges
-distance_threshold_km = 10.0
-nproc_csv = 25
-add_streamflow = True
+#options
+ADD_STREAMFLOW = True #include streamflow in .csvs
 
-#ROS parameters
-ros_min_detects = 5            
-ros_min_detect_fraction = 0.5  
+NPROC_CSV = 25 #number of processes for creating .csvs
 
-#Outlier detection parameters
-outlier_iqr_multiplier = 5.0   
-outlier_min_n = 10             
+ROS_MIN_DETECTS = 5 #minimum number of detects required for ROS            
+ROS_MIN_DETECT_FRACTION = 0.5 #minimum proportion of detects required for ROS  
+
+OUTLIER_IQR_MULTIPLIER = 5.0 #interquartile range multiplier for statistical outlier detection   
+OUTLIER_MIN_N = 10 #minimum number of observations required to run statistical outlier detection             
 
 
 ###---------------------------------------------------###
 ###                    Functions                      ###
 ###---------------------------------------------------###
 
+def round_to_sig_figs(x, sig_figs=5):
+    """Round a value to a given number of significant figures."""
+    
+    if x == 0 or (isinstance(x, float) and np.isnan(x)):
+        return x
+    magnitude = np.floor(np.log10(np.abs(x)))
+    return round(x, -int(magnitude) + (sig_figs - 1))
+
+
 def detect_outliers(df_group, global_min, global_max, iqr_multiplier=3.0, min_n=10, log_transform=False):
+    """Detect physical and statistical outliers."""
 
     #apply absolute physical bounds
     mask_physical = (df_group["obs"] >= global_min) & (df_group["obs"] <= global_max)
     
     if len(df_group) < min_n or mask_physical.sum() < min_n:
-        #too few observations for outlier detection - only use physical bounds
-        return mask_physical
+        return mask_physical #too few observations for statistical outlier detection (i.e. only use physical bounds)
     
     #get physically plausible values
     values = df_group.loc[mask_physical, "obs"].copy()
     
     #apply log transformation (variables defined in variable_list)
     if log_transform:
-        #add small constant to observations to avoid log(0)
-        values_for_iqr = np.log10(values + 1e-6)
+        values_for_iqr = np.log10(values + 1e-6) #add small constant to observations to avoid log(0)
     else:
         values_for_iqr = values
     
@@ -73,8 +78,7 @@ def detect_outliers(df_group, global_min, global_max, iqr_multiplier=3.0, min_n=
     IQR = Q3 - Q1
     
     if IQR == 0:
-        #no variation in data (i.e. keep all physically plausible values)
-        return mask_physical
+        return mask_physical #no variation in data (i.e. keep all physically plausible values)
     
     lower_bound = Q1 - iqr_multiplier * IQR
     upper_bound = Q3 + iqr_multiplier * IQR
@@ -92,18 +96,19 @@ def detect_outliers(df_group, global_min, global_max, iqr_multiplier=3.0, min_n=
     return mask_combined
 
 
-def ros_substitution(values, is_censored):
+def ros_substitution(values, is_censored, is_detected):
+    """Regression on Order Statistics (ROS) imputation for left-censored observations."""
 
     values = np.array(values)
     is_censored = np.array(is_censored)
-    
-    #separate detected and LOD ("<") observations
-    detected = values[~is_censored]
+    is_detected = np.array(is_detected)
+
+    #separate clean detected and censored observations
+    detected = values[is_detected]
     censored_limits = values[is_censored]
     
     if len(detected) == 0:
-        #no detected values - apply direct substituion (i.e. LOD/2)
-        return values * 0.5
+        return values * 0.5 #no detected values (i.e. apply direct substituion: LOD/2)
     
     #log-transform detected values for regression
     log_detected = np.log(detected)
@@ -113,7 +118,7 @@ def ros_substitution(values, is_censored):
     detected_sorted_idx = np.argsort(detected)
     plotting_positions = (np.arange(1, n_detected + 1)) / (n_detected + 1)
     
-    #fit linear regression: log(concentration) ~ Normal quantiles
+    #fit linear regression
     norm_quantiles = stats.norm.ppf(plotting_positions)
     slope, intercept = np.polyfit(norm_quantiles, log_detected[detected_sorted_idx], 1)
     
@@ -133,7 +138,7 @@ def ros_substitution(values, is_censored):
     #predict log-concentrations for censored values
     censored_norm_quantiles = stats.norm.ppf(censored_plotting_pos)
     log_censored_predicted = intercept + slope * censored_norm_quantiles
-    censored_predicted = np.exp(log_censored_predicted)
+    censored_predicted = np.array([round_to_sig_figs(v, 5) for v in np.exp(log_censored_predicted)])
     
     #combine detected and imputed values
     imputed_values = values.copy()
@@ -143,40 +148,59 @@ def ros_substitution(values, is_censored):
 
 
 def apply_ros_or_substitution(df_group):
+    """Apply LOD imputation (ROS or direct substitution, depending on data avaliability"""
 
-    if "limit_flag" not in df_group.columns:
+    if "flag" not in df_group.columns or "detection_limit" not in df_group.columns:
         return df_group, {"method": "none", "n_censored": 0, "n_detected": len(df_group)}
     
-    is_censored = (df_group["limit_flag"] == "<").values
-    n_censored = is_censored.sum()
-    n_detected = (~is_censored).sum()
-    n_total = len(df_group)
+    #identify censored ("<") and outlier ("*") observations
+    is_censored = (df_group["flag"] == "<").values
+    is_outlier  = (df_group["flag"] == "*").values
     
+    #"clean" detections (i.e. observations neither censored nor flagged as outlier)
+    is_detected = ~is_censored & ~is_outlier
+    n_censored  = is_censored.sum()
+    n_detected  = is_detected.sum()
+    n_total     = len(df_group)
+
     if n_censored == 0:
         return df_group, {"method": "none", "n_censored": 0, "n_detected": n_detected}
-    
+
+    #create imputation_method column
+    df_group = df_group.copy()
+    if "imputation_method" not in df_group.columns:
+        df_group["imputation_method"] = ""
+
+    #for censored observations, use detection_limit as the value for imputation
+    working_values = df_group["obs"].copy()
+    working_values[is_censored] = df_group.loc[is_censored, "detection_limit"]
+
     #check ROS criteria
     detect_fraction = n_detected / n_total
-    use_ros = (n_detected >= ros_min_detects and 
-               detect_fraction >= ros_min_detect_fraction)
-    
+    use_ros = (n_detected >= ROS_MIN_DETECTS and
+               detect_fraction >= ROS_MIN_DETECT_FRACTION)
+
     if use_ros:
         try:
-            #apply ROS
-            imputed = ros_substitution(df_group["obs"].values, is_censored)
-            df_group = df_group.copy()
+            #apply ROS using detection limits for censored values (with observations flagged as outliers excluded)
+            imputed = ros_substitution(working_values.values, is_censored, is_detected)
             df_group["obs"] = imputed
+            df_group.loc[is_censored, "imputation_method"] = "ROS"
             method = "ros"
         except Exception as e:
-            #otherwise, apply direct subsitituion (i.e. LOD/2)
+            #otherwise, apply direct substitution (i.e. LOD/2)
             print(f"    ROS failed, using substitution: {e}")
-            df_group = df_group.copy()
-            df_group.loc[is_censored, "obs"] = df_group.loc[is_censored, "obs"] * 0.5
+            df_group.loc[is_censored, "obs"] = (
+                df_group.loc[is_censored, "detection_limit"] * 0.5
+            ).apply(lambda x: round_to_sig_figs(x, 5))
+            df_group.loc[is_censored, "imputation_method"] = "LOD/2"
             method = "substitution_fallback"
     else:
-        #use substitution method
-        df_group = df_group.copy()
-        df_group.loc[is_censored, "obs"] = df_group.loc[is_censored, "obs"] * 0.5
+        #use substitution method (LOD/2)
+        df_group.loc[is_censored, "obs"] = (
+            df_group.loc[is_censored, "detection_limit"] * 0.5
+        ).apply(lambda x: round_to_sig_figs(x, 5))
+        df_group.loc[is_censored, "imputation_method"] = "LOD/2"
         method = "substitution"
     
     stats_dict = {
@@ -190,14 +214,14 @@ def apply_ros_or_substitution(df_group):
     return df_group, stats_dict
 
 
-###---------------------------------------------------###
-###        Clean and process water quality data       ###
-###---------------------------------------------------###
+###-----------------------------------------------------###
+###        Clean and process water quality data         ###
+###-----------------------------------------------------###
 
 def clean_wq_data():
     """Clean raw water quality data and save to .csv (per-variable)"""
     
-    #Define variable limits
+    #define variable limits
     var_limits = pd.read_csv(variable_list_path)
     var_limits["variable_code"] = var_limits["variable_code"].astype(str)
     
@@ -208,11 +232,16 @@ def clean_wq_data():
     #read in full (raw) wqms dataset
     df_all = pd.read_csv(combined_wq_file, dtype=str)
     df_all["raw_obs"] = pd.to_numeric(df_all["raw_obs"], errors="coerce")
-    df_all["dates"] = pd.to_datetime(df_all["dates"], format="%d/%m/%Y", errors="coerce")
+    df_all["detection_limit"] = pd.to_numeric(df_all["detection_limit"], errors="coerce")
+    df_all["dates"] = pd.to_datetime(df_all["dates"], format="mixed", dayfirst=True, errors="coerce")
     
     #create obs and unit data columns (called raw_obs and raw_unit in unprocessed dataset)
     df_all["obs"] = pd.to_numeric(df_all["raw_obs"], errors="coerce")
     df_all["unit"] = df_all["raw_unit"]
+    
+    #rename limit_flag to flag
+    if "limit_flag" in df_all.columns:
+        df_all = df_all.rename(columns={"limit_flag": "flag"})
     
     #process water quality data per (unique) variable
     variables = df_all["variable"].unique()
@@ -222,13 +251,18 @@ def clean_wq_data():
         print(f"\nProcessing variable '{variable_code}' with {len(df)} rows ...")
         original_len = len(df)
         
-        #Step 1: remove rows with NA in obs
+        #step 1: Handle censored vs. detected observations
         before = len(df)
-        df = df.dropna(subset=["obs"])
-        dropped_na = before - len(df)
-        print(f"  Dropped NA in obs: {dropped_na}")
+        mask_valid = (
+            df["obs"].notna() |  #detected observation
+            ((df["flag"] == "<") & df["detection_limit"].notna())  #censored observation
+        )
         
-        #Step 2: remove outliers using hybrid approach (physical bounds + per-site IQR)
+        df = df[mask_valid]
+        dropped_invalid = before - len(df)
+        print(f"  Dropped rows with invalid obs/detection_limit combination: {dropped_invalid}")
+        
+        #step 2: flag outliers using hybrid approach (physical bounds + per-site IQR)
         limits = var_limits[var_limits["variable_code"] == variable_code]
         
         if not limits.empty:
@@ -242,26 +276,34 @@ def clean_wq_data():
             else:
                 use_log_transform = bool(use_log_transform)
             
-            before = len(df)
-            
-            #apply hybrid method per site
-            keep_mask = pd.Series(False, index=df.index)
+            #apply hybrid method per site (only on detected observations)
+            outlier_mask = pd.Series(False, index=df.index)  # True = outlier
             outlier_stats = {"physical_only": 0, "statistical": 0, "physical_drops": 0, "statistical_drops": 0}
             
             for wqms_id, group in df.groupby("wqms_id"):
-                group_mask = detect_outliers(
-                    group, 
+                #only check outliers for detected observations
+                detected_mask = group["obs"].notna()
+                
+                if detected_mask.sum() == 0:
+                    continue  #no detected observations to check
+                
+                detected_group = group[detected_mask]
+                
+                group_keep_mask = detect_outliers(
+                    detected_group, 
                     plausible_min, 
                     plausible_max,
-                    iqr_multiplier=outlier_iqr_multiplier,
-                    min_n=outlier_min_n,
+                    iqr_multiplier=OUTLIER_IQR_MULTIPLIER,
+                    min_n=OUTLIER_MIN_N,
                     log_transform=use_log_transform
                 )
-                keep_mask.loc[group.index] = group_mask.values
+                
+                #mark outliers (where keep_mask is False) in the outlier_mask
+                outlier_mask.loc[detected_group.index] = ~group_keep_mask.values
                 
                 #track which method was limiting
-                physical_drops = ((group["obs"] < plausible_min) | (group["obs"] > plausible_max)).sum()
-                total_drops = (~group_mask).sum()
+                physical_drops = ((detected_group["obs"] < plausible_min) | (detected_group["obs"] > plausible_max)).sum()
+                total_drops = (~group_keep_mask).sum()
                 
                 if physical_drops > 0:
                     outlier_stats["physical_only"] += 1
@@ -270,19 +312,33 @@ def clean_wq_data():
                     outlier_stats["statistical"] += 1
                     outlier_stats["statistical_drops"] += (total_drops - physical_drops)
             
-            df = df[keep_mask]
-            dropped_plausible = before - len(df)
+            #flag outliers with "*" in the flag column (only for detected obs, not censored "<")
+            if "flag" not in df.columns:
+                df["flag"] = ""
+            df.loc[outlier_mask & (df["flag"] != "<"), "flag"] = "*"
             
+            flagged_plausible = outlier_mask.sum()
             log_note = " (log-transformed IQR)" if use_log_transform else ""
-            print(f"  Dropped outliers outside plausible range [{plausible_min}, {plausible_max}]{log_note}: {dropped_plausible}")
+            print(f"  Flagged outliers outside plausible range [{plausible_min}, {plausible_max}]{log_note}: {flagged_plausible}")
             print(f"    Physical boundary violations: {outlier_stats['physical_drops']} obs from {outlier_stats['physical_only']} sites")
             print(f"    Additional statistical outliers: {outlier_stats['statistical_drops']} obs from {outlier_stats['statistical']} sites")
+            
+            #flag censored observations with detection limits outside plausible range
+            censored_mask = (df["flag"] == "<") & df["detection_limit"].notna()
+            invalid_detection_limits = censored_mask & (
+                (df["detection_limit"] < plausible_min) | 
+                (df["detection_limit"] > plausible_max)
+            )
+            df.loc[invalid_detection_limits, "flag"] = "*"
+            flagged_detection_limits = invalid_detection_limits.sum()
+            if flagged_detection_limits > 0:
+                print(f"  Flagged censored observations with detection limits outside plausible range: {flagged_detection_limits}")
         else:
-            print(f"  Warning: No plausible limits found for variable '{variable_code}' - skipping outlier filtering")
+            print(f"  Warning: No plausible limits found for variable '{variable_code}' - skipping outlier flagging")
         
-        #Step 3: process observations with limit_flag == "<" using ROS or substitution
-        if "limit_flag" in df.columns:
-            mask_censored = df["limit_flag"] == "<"
+        #step 3: process observations with flag == "<" using ROS or substitution
+        if "flag" in df.columns and "detection_limit" in df.columns:
+            mask_censored = df["flag"] == "<"
             n_censored_total = mask_censored.sum()
             
             if n_censored_total > 0:
@@ -309,32 +365,40 @@ def clean_wq_data():
                 if method_counts['substitution_fallback'] > 0:
                     print(f"    Substitution fallback for {method_counts['substitution_fallback']} sites ({censored_by_method['substitution_fallback']} censored obs)")
         
-        #Step 4: remove exact duplicates (i.e. same wqms_id, date and obs) and average where multiple (different) obs per day (i.e. same wqms_id, date)
+        #step 4: remove exact duplicates (i.e. same wqms_id, date and obs)
         before = len(df)
-        df = df.drop_duplicates(subset=["variable", "wqms_id", "dates", "unit", "obs"])
+        duplicate_cols = ["variable", "wqms_id", "dates", "unit", "obs"]
+        if "flag" in df.columns:
+            duplicate_cols.append("flag")
+        if "imputation_method" in df.columns:
+            duplicate_cols.append("imputation_method")
+        
+        df = df.drop_duplicates(subset=duplicate_cols)
         exact_drops = before - len(df)
         print(f"  Removed exact duplicate rows: {exact_drops} dropped")
         
-        before = len(df)
-        df = df.groupby(["variable", "wqms_id", "dates", "unit"], as_index=False).agg({"obs": "mean"})
-        grouped_drops = before - len(df)
-        print(f"  Combined duplicate site/date rows with differing obs: {grouped_drops} merged")
-        
-        #Step 5: remove implausible dates (e.g. future)
+        #step 5: remove implausible dates (e.g. future)
         today = pd.Timestamp.today().normalize()
         before = len(df)
         df = df[df["dates"] <= today]
         future_drops = before - len(df)
         print(f"  Removed rows with future dates: {future_drops} dropped")
         
-        #Step 6: reorder columns
-        df = df[["wqms_id", "dates", "obs", "unit", "variable"]]
+        #step 6: reorder columns
+        if "flag" not in df.columns:
+            df["flag"] = ""
+        if "detection_limit" not in df.columns:
+            df["detection_limit"] = np.nan
+        if "imputation_method" not in df.columns:
+            df["imputation_method"] = ""
         
-        #Step 7. Save process water quality data per variable
+        df = df[["wqms_id", "dates", "obs", "unit", "flag", "detection_limit", "imputation_method", "variable"]]
+        
+        #step 7: Save process water quality data per variable
         out_path = os.path.join(csv_dir, f"{variable_code}.csv")
         df.to_csv(out_path, index=False)
         
-        # Final summary
+        #summary
         final_len = len(df)
         print(f"  Original rows: {original_len}")
         print(f"  Final rows:    {final_len}")
@@ -407,11 +471,8 @@ def process_csv_with_streamflow(param_tuple):
                 print(f"  Skipping gauge {gauge_id_lower} - missing area data")
                 continue
             
-            # Extract streamflow for this gauge
-            sf_series = DS_CARAVAN.streamflow.isel(gauge_id=gauge_idx).to_pandas()
-            
-            # Convert from mm/day to m3/s
-            sf_series = (sf_series * area * 1000) / 86400
+            sf_series = DS_CARAVAN.streamflow.isel(gauge_id=gauge_idx).to_pandas() #extract streamflow for this gauge
+            sf_series = (sf_series * area * 1000) / 86400 #convert from mm/day to m3/s
             
             gauge_sf_dict[gauge_id_lower] = sf_series
             
@@ -429,8 +490,14 @@ def process_csv_with_streamflow(param_tuple):
             return gauge_sf_dict[gauge_id_lower].get(row["dates"], np.nan)
         return np.nan
     
-    df_to_process["streamflow"] = df_to_process.apply(get_streamflow, axis=1)
+    df_to_process["streamflow"] = df_to_process.apply(get_streamflow, axis=1).apply(
+        lambda x: round_to_sig_figs(x, 5) if pd.notna(x) else x
+    )
     df_to_process.drop(columns=["gauge_id"], inplace=True)
+    
+    columns_order = ["wqms_id", "dates", "obs", "unit", "flag", "detection_limit", "imputation_method", "variable", "streamflow"]
+    columns_order = [col for col in columns_order if col in df_to_process.columns]
+    df_to_process = df_to_process[columns_order]
     
     out_csv_path = os.path.join(csv_dir, f"{param_name}.csv")
     df_to_process = df_to_process.sort_values(['wqms_id', 'dates'])
@@ -439,6 +506,7 @@ def process_csv_with_streamflow(param_tuple):
 
 def init_worker(global_valid_site_gauge_pairs, ds_caravan, gauge_id_to_idx, gauge_id_to_area):
     """Initialise worker process with global variables"""
+    
     global valid_site_gauge_pairs, DS_CARAVAN, GAUGE_ID_TO_IDX, GAUGE_ID_TO_AREA
     valid_site_gauge_pairs = global_valid_site_gauge_pairs
     DS_CARAVAN = ds_caravan
@@ -447,9 +515,9 @@ def init_worker(global_valid_site_gauge_pairs, ds_caravan, gauge_id_to_idx, gaug
 
 
 def add_streamflow_to_csvs():
-    """Add streamflow data to cleaned water quality CSV files using Caravan.zarr"""
+    """Add streamflow data to cleaned water quality CSV files using data stored in Caravan.zarr"""
     
-    print(f" Adding streamflow data to .csv files, where there is a matching gauge_id within {distance_threshold_km} km")
+    print(f" Adding streamflow data to .csv files for all sites with a matching gauge_id")
     
     global df_sites, valid_site_gauge_pairs, ds_caravan, gauge_id_to_idx, gauge_id_to_area
     
@@ -461,22 +529,17 @@ def add_streamflow_to_csvs():
     df_attrs = pd.read_csv(caravan_attributes, dtype={"gauge_id": str})
     df_sites = df_sites.merge(df_attrs[["gauge_id", "area"]], on="gauge_id", how="left")
     
-    #apply filter by distance_threshold for gauge_ids
+    #all sites with a non-null gauge_id are valid
     valid_site_gauge_pairs = set()
     for _, row in df_sites.iterrows():
-        if (pd.notna(row["gauge_id"]) and 
-            pd.notna(row["gauge_distance_km"]) and 
-            row["gauge_distance_km"] < distance_threshold_km):
+        if pd.notna(row["gauge_id"]) and str(row["gauge_id"]).strip() != "":
             valid_site_gauge_pairs.add((row["wqms_id"], row["gauge_id"]))
     
     valid_gauge_ids = set(gauge_id for _, gauge_id in valid_site_gauge_pairs)
     
     total_sites = len(df_sites[df_sites["gauge_id"].notna()])
-    valid_sites = len(valid_site_gauge_pairs)
-    
     print(f"Total sites with gauge_id: {total_sites}")
-    print(f"Site-gauge pairs within {distance_threshold_km} km threshold: {valid_sites}")
-    print(f"Unique gauge_ids with at least one site within threshold: {len(valid_gauge_ids)}")
+    print(f"Unique gauge_ids: {len(valid_gauge_ids)}")
     
     #load all water quality data
     print(f"Updating all water quality .csv files with streamflow")
@@ -501,7 +564,7 @@ def add_streamflow_to_csvs():
     ]
     
     #process with multiprocessing, passing zarr dataset to workers
-    with Pool(processes=nproc_csv, maxtasksperchild=1, initializer=init_worker,
+    with Pool(processes=NPROC_CSV, maxtasksperchild=1, initializer=init_worker,
               initargs=(valid_site_gauge_pairs, ds_caravan, gauge_id_to_idx, gauge_id_to_area)) as pool:
         pool.map(process_csv_with_streamflow, param_tuples)
     
@@ -515,10 +578,11 @@ def add_streamflow_to_csvs():
 
 if __name__ == "__main__":
     
+    print(f"Starting processing water quality data")
     clean_wq_data()
     print(f"Finished processing water quality data")
     
-    if add_streamflow:
+    if ADD_STREAMFLOW:
         add_streamflow_to_csvs()
         print(f"Finished adding streamflow data to .csv files")
     else:

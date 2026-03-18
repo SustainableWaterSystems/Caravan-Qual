@@ -18,5 +18,3 @@ conda activate /gpfs/home6/ejones/.conda/envs/Caravan-Qual
 ##Caravan-Qual (process .zarr)
 python scripts/Caravan-Qual/create_Caravan-Qual_zarr.py &
 wait
-
-
