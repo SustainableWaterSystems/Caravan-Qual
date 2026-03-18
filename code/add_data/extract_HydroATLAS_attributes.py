@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+import os
+import sys
 import warnings
 from collections import defaultdict
 from pathlib import Path
@@ -8,18 +11,19 @@ import pandas as pd
 from shapely.geometry import Point, Polygon, MultiPolygon
 from tqdm import tqdm
 
+sys.stdout.reconfigure(line_buffering=True)
 warnings.filterwarnings('ignore')
 
 ###---------------------------------------------------###
 ###                     Setup                         ###
 ###---------------------------------------------------###
 
-#Define input and output paths
-BASIN_SHAPEFILE = '/gpfs/work4/0/dynql/Caravan-Qual/auxiliary/wqms-gpkg/wqms_basin_shapes.gpkg'
-HYDROATLAS_FOLDER = '/gpfs/work4/0/dynql/Caravan-Qual/auxiliary/HydroATLAS/'
-OUTPUT_FILE = '/gpfs/work4/0/dynql/Caravan-Qual/auxiliary/HydroATLAS/linkno_hydroatlas_attributes_Caravan.csv'
+#directories and files
+basin_shp = '/gpfs/work4/0/dynql/Caravan-Qual/auxiliary/wqms-gpkg/wqms_basin_shapes.gpkg'
+hydroatlas_folder = '/gpfs/work4/0/dynql/Caravan-Qual/auxiliary/HydroATLAS/'
+output_file = '/gpfs/work4/0/dynql/Caravan-Qual/auxiliary/HydroATLAS/linkno_hydroatlas_attributes_Caravan.csv'
 
-#Basin identification and overlap thresholds
+#options (basin identification and overlap thresholds)
 LINKNO_FIELD = 'LINKNO'
 MIN_OVERLAP_THRESHOLD_DEFAULT = 5
 MIN_OVERLAP_PERCENTAGE = 0.5
@@ -29,6 +33,7 @@ MIN_OVERLAP_PERCENTAGE = 0.5
 ###                HydroATLAS setup                   ###
 ###---------------------------------------------------###
 
+##Follows Caravan procedure
 #HydroATLAS shapefile patterns and property categories
 SHAPEFILE_PATTERNS = {
     'level12': '*lev12*.shp',
@@ -56,7 +61,7 @@ IGNORE_PROPERTIES = [
 
 PROCESSING_PROPERTIES = ['HYBAS_ID', 'NEXT_DOWN', 'SUB_AREA', 'UP_AREA']
 
-#Processing configuration (defined by basin size)
+#Processing configuration
 PROCESSING_CONFIG = {
     '0-to-2000': {
         'min_overlap_threshold': 0,
@@ -101,203 +106,38 @@ PROCESSING_CONFIG = {
 
 OUTPUT_COLUMNS = [
     'LINKNO',
-    'sgr_dk_sav',
-    'glc_pc_s06',
-    'glc_pc_s07',
-    'nli_ix_sav',
-    'glc_pc_s04',
-    'glc_pc_s05',
-    'glc_pc_s02',
-    'glc_pc_s03',
-    'glc_pc_s01',
-    'pet_mm_syr',
-    'glc_pc_s08',
-    'glc_pc_s09',
-    'swc_pc_s09',
-    'ele_mt_smx',
-    'tbi_cl_smj',
-    'swc_pc_s01',
-    'swc_pc_s02',
-    'swc_pc_s03',
-    'swc_pc_s04',
-    'swc_pc_s05',
-    'swc_pc_s06',
-    'swc_pc_s07',
-    'swc_pc_s08',
-    'crp_pc_sse',
-    'glc_pc_s22',
-    'glc_pc_s20',
-    'glc_pc_s21',
-    'wet_pc_sg1',
-    'wet_pc_sg2',
-    'pac_pc_sse',
-    'swc_pc_s10',
-    'swc_pc_s11',
-    'swc_pc_s12',
-    'clz_cl_smj',
-    'gwt_cm_sav',
-    'glc_pc_s17',
-    'glc_pc_s18',
-    'hft_ix_s93',
-    'glc_pc_s15',
-    'ire_pc_sse',
-    'glc_pc_s16',
-    'glc_pc_s13',
-    'prm_pc_sse',
-    'glc_pc_s14',
-    'glc_pc_s11',
-    'glc_pc_s12',
-    'glc_pc_s10',
-    'kar_pc_sse',
-    'slp_dg_sav',
-    'glc_pc_s19',
-    'tmp_dc_s07',
-    'tmp_dc_s08',
-    'tmp_dc_s05',
-    'tmp_dc_s06',
-    'tmp_dc_s09',
-    'for_pc_sse',
-    'aet_mm_s06',
-    'aet_mm_s05',
-    'aet_mm_s08',
-    'aet_mm_s07',
-    'aet_mm_s09',
-    'tmp_dc_s10',
-    'tmp_dc_s11',
-    'aet_mm_s02',
-    'aet_mm_s01',
-    'tmp_dc_s12',
-    'aet_mm_s04',
-    'aet_mm_s03',
-    'lit_cl_smj',
-    'tmp_dc_s03',
-    'tmp_dc_s04',
-    'tmp_dc_s01',
-    'tmp_dc_s02',
-    'cls_cl_smj',
-    'pre_mm_syr',
-    'pnv_pc_s01',
-    'pnv_pc_s04',
-    'pnv_pc_s05',
-    'pnv_pc_s02',
-    'rdd_mk_sav',
-    'ele_mt_smn',
-    'pnv_pc_s03',
-    'pnv_pc_s08',
-    'pnv_pc_s09',
-    'pnv_pc_s06',
-    'pnv_pc_s07',
-    'wet_cl_smj',
-    'snw_pc_syr',
-    'pnv_pc_s11',
-    'pnv_pc_s12',
-    'pnv_pc_s10',
-    'pnv_pc_s15',
-    'pnv_pc_s13',
-    'pnv_pc_s14',
-    'cmi_ix_syr',
-    'pet_mm_s11',
-    'pet_mm_s12',
-    'pet_mm_s10',
-    'tmp_dc_smn',
-    'wet_pc_s08',
-    'wet_pc_s09',
-    'slt_pc_sav',
-    'wet_pc_s02',
-    'wet_pc_s03',
-    'wet_pc_s01',
-    'hdi_ix_sav',
-    'wet_pc_s06',
-    'wet_pc_s07',
-    'wet_pc_s04',
-    'wet_pc_s05',
-    'fec_cl_smj',
-    'glc_cl_smj',
-    'swc_pc_syr',
-    'hft_ix_s09',
-    'soc_th_sav',
-    'gdp_ud_sav',
-    'gdp_ud_ssu',
-    'tmp_dc_smx',
-    'cly_pc_sav',
-    'pet_mm_s02',
-    'pet_mm_s03',
-    'pet_mm_s01',
-    'snw_pc_smx',
-    'ppd_pk_sav',
-    'pet_mm_s08',
-    'aet_mm_s11',
-    'pet_mm_s09',
-    'aet_mm_s10',
-    'pet_mm_s06',
-    'pet_mm_s07',
-    'aet_mm_s12',
-    'pet_mm_s04',
-    'pet_mm_s05',
-    'inu_pc_slt',
-    'ero_kh_sav',
-    'aet_mm_syr',
-    'cmi_ix_s10',
-    'cmi_ix_s11',
-    'cmi_ix_s12',
-    'ari_ix_sav',
-    'tmp_dc_syr',
-    'tec_cl_smj',
-    'fmh_cl_smj',
-    'inu_pc_smn',
+    'sgr_dk_sav', 'nli_ix_sav', 'pet_mm_syr', 'pre_mm_syr', 'run_mm_syr', 'aet_mm_syr', 'swc_pc_syr', 'snw_pc_syr',
+    'tmp_dc_syr', 'tmp_dc_smn', 'tmp_dc_smx', 'cmi_ix_syr', 'ari_ix_sav', 'slp_dg_sav', 'ele_mt_sav', 'ele_mt_smn', 'ele_mt_smx',
+    'gwt_cm_sav', 'slt_pc_sav', 'snd_pc_sav', 'cly_pc_sav', 'soc_th_sav', 'ero_kh_sav', 'rdd_mk_sav', 'ppd_pk_sav',
+    'gdp_ud_sav', 'gdp_ud_ssu', 'hdi_ix_sav', 'hft_ix_s93', 'hft_ix_s09',
+    'crp_pc_sse', 'pac_pc_sse', 'ire_pc_sse', 'prm_pc_sse', 'kar_pc_sse', 'for_pc_sse', 'urb_pc_sse', 'lka_pc_sse',
+    'gla_pc_sse', 'pst_pc_sse',
+    'wet_pc_sg1', 'wet_pc_sg2',
+    'wet_pc_s01', 'wet_pc_s02', 'wet_pc_s03', 'wet_pc_s04', 'wet_pc_s05', 'wet_pc_s06', 'wet_pc_s07', 'wet_pc_s08', 'wet_pc_s09',
+    'glc_pc_s01', 'glc_pc_s02', 'glc_pc_s03', 'glc_pc_s04', 'glc_pc_s05', 'glc_pc_s06', 'glc_pc_s07', 'glc_pc_s08', 'glc_pc_s09',
+    'glc_pc_s10', 'glc_pc_s11', 'glc_pc_s12', 'glc_pc_s13', 'glc_pc_s14', 'glc_pc_s15', 'glc_pc_s16', 'glc_pc_s17', 'glc_pc_s18',
+    'glc_pc_s19', 'glc_pc_s20', 'glc_pc_s21', 'glc_pc_s22',
+    'swc_pc_s01', 'swc_pc_s02', 'swc_pc_s03', 'swc_pc_s04', 'swc_pc_s05', 'swc_pc_s06', 'swc_pc_s07', 'swc_pc_s08', 'swc_pc_s09',
+    'swc_pc_s10', 'swc_pc_s11', 'swc_pc_s12',
+    'snw_pc_s01', 'snw_pc_s02', 'snw_pc_s03', 'snw_pc_s04', 'snw_pc_s05', 'snw_pc_s06', 'snw_pc_s07', 'snw_pc_s08', 'snw_pc_s09',
+    'snw_pc_s10', 'snw_pc_s11', 'snw_pc_s12', 'snw_pc_smx',
+    'tmp_dc_s01', 'tmp_dc_s02', 'tmp_dc_s03', 'tmp_dc_s04', 'tmp_dc_s05', 'tmp_dc_s06', 'tmp_dc_s07', 'tmp_dc_s08', 'tmp_dc_s09',
+    'tmp_dc_s10', 'tmp_dc_s11', 'tmp_dc_s12',
+    'pre_mm_s01', 'pre_mm_s02', 'pre_mm_s03', 'pre_mm_s04', 'pre_mm_s05', 'pre_mm_s06', 'pre_mm_s07', 'pre_mm_s08', 'pre_mm_s09',
+    'pre_mm_s10', 'pre_mm_s11', 'pre_mm_s12',
+    'pet_mm_s01', 'pet_mm_s02', 'pet_mm_s03', 'pet_mm_s04', 'pet_mm_s05', 'pet_mm_s06', 'pet_mm_s07', 'pet_mm_s08', 'pet_mm_s09',
+    'pet_mm_s10', 'pet_mm_s11', 'pet_mm_s12',
+    'aet_mm_s01', 'aet_mm_s02', 'aet_mm_s03', 'aet_mm_s04', 'aet_mm_s05', 'aet_mm_s06', 'aet_mm_s07', 'aet_mm_s08', 'aet_mm_s09',
+    'aet_mm_s10', 'aet_mm_s11', 'aet_mm_s12',
+    'cmi_ix_s01', 'cmi_ix_s02', 'cmi_ix_s03', 'cmi_ix_s04', 'cmi_ix_s05', 'cmi_ix_s06', 'cmi_ix_s07', 'cmi_ix_s08', 'cmi_ix_s09',
+    'cmi_ix_s10', 'cmi_ix_s11', 'cmi_ix_s12',
+    'pnv_pc_s01', 'pnv_pc_s02', 'pnv_pc_s03', 'pnv_pc_s04', 'pnv_pc_s05', 'pnv_pc_s06', 'pnv_pc_s07', 'pnv_pc_s08', 'pnv_pc_s09',
+    'pnv_pc_s10', 'pnv_pc_s11', 'pnv_pc_s12', 'pnv_pc_s13', 'pnv_pc_s14', 'pnv_pc_s15',
+    'inu_pc_smn', 'inu_pc_smx', 'inu_pc_slt',
+    'tbi_cl_smj', 'clz_cl_smj', 'lit_cl_smj', 'cls_cl_smj', 'wet_cl_smj', 'fec_cl_smj', 'glc_cl_smj', 'tec_cl_smj', 'fmh_cl_smj',
     'pnv_cl_smj',
-    'pre_mm_s08',
-    'pre_mm_s09',
-    'run_mm_syr',
-    'pre_mm_s06',
-    'pre_mm_s07',
-    'pre_mm_s04',
-    'pre_mm_s05',
-    'snd_pc_sav',
-    'pre_mm_s02',
-    'pre_mm_s03',
-    'ele_mt_sav',
-    'pre_mm_s01',
-    'pre_mm_s10',
-    'pre_mm_s11',
-    'pre_mm_s12',
-    'urb_pc_sse',
-    'lka_pc_sse',
-    'snw_pc_s01',
-    'snw_pc_s02',
-    'snw_pc_s03',
-    'snw_pc_s04',
-    'snw_pc_s05',
-    'snw_pc_s06',
-    'gla_pc_sse',
-    'snw_pc_s07',
-    'snw_pc_s08',
-    'snw_pc_s09',
-    'inu_pc_smx',
-    'snw_pc_s10',
-    'snw_pc_s11',
-    'snw_pc_s12',
-    'cmi_ix_s07',
-    'cmi_ix_s08',
-    'cmi_ix_s05',
-    'cmi_ix_s06',
-    'cmi_ix_s09',
-    'cmi_ix_s03',
-    'cmi_ix_s04',
-    'cmi_ix_s01',
-    'cmi_ix_s02',
-    'pst_pc_sse',
-    'dis_m3_pmn',
-    'dis_m3_pmx',
-    'dis_m3_pyr',
-    'lkv_mc_usu',
-    'rev_mc_usu',
-    'ria_ha_usu',
-    'riv_tc_usu',
-    'pop_ct_usu',
-    'dor_pc_pva',
-    'area',
-    'area_fraction_used_for_aggregation',
+    'dis_m3_pmn', 'dis_m3_pmx', 'dis_m3_pyr', 'lkv_mc_usu', 'rev_mc_usu', 'ria_ha_usu', 'riv_tc_usu', 'pop_ct_usu', 'dor_pc_pva',
+    'area', 'area_fraction_used_for_aggregation',
 ]
 
 ###---------------------------------------------------###
@@ -305,22 +145,21 @@ OUTPUT_COLUMNS = [
 ###---------------------------------------------------###
 
 def validate_inputs():
-    """Validate that all input paths and files exist."""
-    print("Validating input paths...")
+    """Check input paths and files exist."""
     
-    if not Path(BASIN_SHAPEFILE).exists():
-        raise FileNotFoundError(f"Basin shapefile not found: {BASIN_SHAPEFILE}")
+    if not Path(basin_shp).exists():
+        raise FileNotFoundError(f"Basin shapefile not found: {basin_shp}")
     
-    if not Path(HYDROATLAS_FOLDER).exists():
-        raise FileNotFoundError(f"HydroATLAS folder not found: {HYDROATLAS_FOLDER}")
+    if not Path(hydroatlas_folder).exists():
+        raise FileNotFoundError(f"HydroATLAS folder not found: {hydroatlas_folder}")
     
     print("All input paths validated successfully!")
 
 
 def load_basin_data():
-    """Load basin shapefile and prepare it for processing."""
-    print(f"Loading basin data from {BASIN_SHAPEFILE}...")
-    basins = gpd.read_file(BASIN_SHAPEFILE)
+    """Load basin shapefile and prepare for processing."""
+    
+    basins = gpd.read_file(basin_shp)
     
     if LINKNO_FIELD not in basins.columns:
         raise ValueError(f"'{LINKNO_FIELD}' field not found in basin shapefile")
@@ -336,14 +175,15 @@ def load_basin_data():
 
 def load_existing_linknos():
     """Load LINKNOs from existing output file to skip reprocessing."""
-    output_path = Path(OUTPUT_FILE)
+    
+    output_path = Path(output_file)
     
     if not output_path.exists():
-        print("No existing output file found - will process all basins")
+        print("No existing output file found. Processing all basins")
         return set()
     
     try:
-        existing_df = pd.read_csv(OUTPUT_FILE)
+        existing_df = pd.read_csv(output_file)
         if LINKNO_FIELD in existing_df.columns:
             existing_linknos = set(existing_df[LINKNO_FIELD])
             print(f"Found {len(existing_linknos)} existing LINKNOs in output file")
@@ -355,15 +195,15 @@ def load_existing_linknos():
 
 
 def load_hydroatlas_data(level):
-    """Load HydroATLAS data for the specified level."""
+    """Load HydroATLAS data for a specified level."""
+    
     pattern = SHAPEFILE_PATTERNS[level]
     print(f"  Loading HydroATLAS data (level: {level})...")
     
-    shapefiles = list(Path(HYDROATLAS_FOLDER).rglob(pattern))
+    shapefiles = list(Path(hydroatlas_folder).rglob(pattern))
     
     if not shapefiles:
         raise FileNotFoundError(f"No HydroATLAS shapefiles found matching pattern '{pattern}'")
-    
     print(f"    Found {len(shapefiles)} shapefile(s)")
     
     hydroatlas_parts = []
@@ -389,30 +229,31 @@ def load_hydroatlas_data(level):
 
 def find_intersecting_polygons(basins, hydroatlas, min_overlap_threshold):
     """Find intersecting polygons between basins and HydroATLAS."""
-    print("Finding intersecting polygons...")
     
+    #reproject to equal-area CRS for area calculations
     hydroatlas_ea = hydroatlas.to_crs('EPSG:6933')
     basins_ea = basins.to_crs('EPSG:6933')
     
+    #fix any invalid geometries introduced by reprojection
     print("Validating geometries after reprojection...")
     hydroatlas_ea['geometry_ea'] = hydroatlas_ea.geometry_ea.buffer(0)
     basins_ea['geometry'] = basins_ea.geometry.buffer(0)
     
+    #spatial index for fast bounding-box pre-filtering
     spatial_index = hydroatlas_ea.sindex
-    
     intersections = defaultdict(lambda: defaultdict(list))
     
     for idx, basin_row in tqdm(basins_ea.iterrows(), total=len(basins_ea), desc="Processing basins"):
         basin_id = basin_row[LINKNO_FIELD]
         basin_geom = basin_row.geometry
         
-        #validate basin geometry
         if not basin_geom.is_valid:
-            basin_geom = basin_geom.buffer(0)
+            basin_geom = basin_geom.buffer(0) #validate basin geometry
         
         #store original basin area in equal-area projection
-        basin_area_km2 = basin_geom.area / 1e6
+        basin_area_km2 = basin_geom.area / 1e6 #convert to km2
         
+        #identify HydroATLAS polygons where bounding boxes overlap the basin
         possible_matches_idx = list(spatial_index.intersection(basin_geom.bounds))
         possible_matches = hydroatlas_ea.iloc[possible_matches_idx]
         
@@ -422,7 +263,6 @@ def find_intersecting_polygons(basins, hydroatlas, min_overlap_threshold):
         for _, hydro_row in possible_matches.iterrows():
             hydro_geom = hydro_row.geometry_ea
             
-            #validate hydro geometry
             if not hydro_geom.is_valid:
                 hydro_geom = hydro_geom.buffer(0)
             
@@ -430,7 +270,7 @@ def find_intersecting_polygons(basins, hydroatlas, min_overlap_threshold):
                 if not basin_geom.intersects(hydro_geom):
                     continue
             except Exception as e:
-                #if intersects check fails, try with buffered geometries
+                #if intersects check fails, try again with buffered geometries
                 try:
                     basin_geom = basin_geom.buffer(0)
                     hydro_geom = hydro_geom.buffer(0)
@@ -450,9 +290,11 @@ def find_intersecting_polygons(basins, hydroatlas, min_overlap_threshold):
                 if overlap_area < min_overlap_threshold:
                     continue
                 
+                #record overlap area and the HydroATLAS pre-computed area
                 intersections[basin_id]['overlap_areas'].append(overlap_area)
                 intersections[basin_id]['area_fragments'].append(hydro_row['SUB_AREA_EA'])
                 
+                #get HydroATLAS attributes (excluding geometry)
                 for col in hydro_row.index:
                     if col not in IGNORE_PROPERTIES and col not in ['geometry', 'geometry_ea', 'SUB_AREA_EA']:
                         intersections[basin_id][col].append(hydro_row[col])
@@ -466,6 +308,7 @@ def find_intersecting_polygons(basins, hydroatlas, min_overlap_threshold):
 
 def compute_pour_point_properties(basin_data, min_overlap_threshold, basin_id):
     """Compute pour point properties for a basin."""
+    
     pour_point_results = {}
     overlap_areas = basin_data.get('overlap_areas', [])
     
@@ -484,7 +327,6 @@ def compute_pour_point_properties(basin_data, min_overlap_threshold, basin_id):
 
 def aggregate_basin_attributes(intersections, min_overlap_threshold):
     """Aggregate HydroATLAS attributes for each basin."""
-    print("Aggregating attributes for basins...")
     
     aggregated_results = {}
     
@@ -496,9 +338,11 @@ def aggregate_basin_attributes(intersections, min_overlap_threshold):
             aggregated_results[basin_id] = basin_results
             continue
         
+        #use intersection areas as weights for area-weighted aggregation
         weights = np.array(overlap_areas, dtype=float)
-        total_overlap_area = np.sum(weights)  # FIXED: Store total overlap area before masking
+        total_overlap_area = np.sum(weights)
         
+        #exclude fragments below min overlap threshold
         mask = weights >= min_overlap_threshold
         masked_weights = weights[mask]
         
@@ -540,12 +384,14 @@ def aggregate_basin_attributes(intersections, min_overlap_threshold):
             valid_weights = masked_weights[valid_mask]
             
             if key in MAJORITY_PROPERTIES:
+                #area-weighted majority vote for categorical variables
                 unique_values = np.unique(valid_values)
                 vote_weights = np.array([
                     np.sum(valid_weights[valid_values == val]) for val in unique_values
                 ])
                 basin_results[key] = unique_values[np.argmax(vote_weights)]
             else:
+                #area-weighted mean for continuous variables
                 basin_results[key] = np.average(valid_values, weights=valid_weights)
         
         pour_point_features = compute_pour_point_properties(
@@ -555,7 +401,6 @@ def aggregate_basin_attributes(intersections, min_overlap_threshold):
         )
         basin_results.update(pour_point_features)
         
-        #Use correct column names and calculation
         basin_results['area'] = total_overlap_area
         basin_results['area_fraction_used_for_aggregation'] = (
             sum(masked_weights) / total_overlap_area if total_overlap_area > 0 else 0
@@ -567,7 +412,8 @@ def aggregate_basin_attributes(intersections, min_overlap_threshold):
 
 
 def format_output_dataframe(df):
-    """Format the output dataframe with specified columns and order."""
+    """Format the output dataframe (e.g. specified columns and order)"""
+    
     print("Formatting output dataframe...")
     
     if df.index.name == LINKNO_FIELD:
@@ -580,21 +426,20 @@ def format_output_dataframe(df):
         print(f"Warning: Missing columns in output: {missing_cols}")
     
     output_df = df[available_cols].copy()
-    
-    print("Rounding numeric columns to 5 decimal places...")
     for col in output_df.columns:
         if pd.api.types.is_numeric_dtype(output_df[col]):
-            output_df[col] = output_df[col].round(5)
+            output_df[col] = output_df[col].round(5) #round numeric columns to 5 decimal places
     
     return output_df
 
 
 def merge_with_existing(new_df, output_file):
-    """Merge new results with existing data, overwriting duplicates."""
+    """Merge with existing data and overwrite duplicates."""
+    
     output_path = Path(output_file)
     
     if not output_path.exists():
-        print("No existing file - writing new results directly")
+        print("No existing file: building from scratch!")
         return new_df
     
     try:
@@ -623,102 +468,99 @@ def merge_with_existing(new_df, output_file):
 
 def main():
     
-    try:
-        validate_inputs()
+    print("Validating input paths...")
+    validate_inputs()
+    
+    print("Creating output paths..."
+    output_path = Path(output_file).parent
+    output_path.mkdir(parents=True, exist_ok=True)
+    
+    print(f"Loading basin data from {basin_shp}...")
+    basins = load_basin_data()
+    
+    #load existing LINKNOs to skip already-processed basins
+    existing_linknos = load_existing_linknos()
+    
+    #filter out processed basins
+    if existing_linknos:
+        original_count = len(basins)
+        basins = basins[~basins[LINKNO_FIELD].isin(existing_linknos)]
+        skipped_count = original_count - len(basins)
+        print(f"Skipping {skipped_count} LINKNOs (already processed)")
+        print(f"Processing {len(basins)} LINKNOs (new)")
         
-        output_path = Path(OUTPUT_FILE).parent
-        output_path.mkdir(parents=True, exist_ok=True)
-        
-        basins = load_basin_data()
-        
-        #load existing LINKNOs to skip already-processed basins
-        existing_linknos = load_existing_linknos()
-        
-        #filter out processed basins
-        if existing_linknos:
-            original_count = len(basins)
-            basins = basins[~basins[LINKNO_FIELD].isin(existing_linknos)]
-            skipped_count = original_count - len(basins)
-            print(f"\n{'='*60}")
-            print(f"SKIPPING {skipped_count} already-processed LINKNOs")
-            print(f"PROCESSING {len(basins)} new/remaining LINKNOs")
-            print(f"{'='*60}\n")
-            
-            if len(basins) == 0:
-                print("All basins have already been processed!")
-                return
-        
-        #process all groups
-        groups_to_process = list(PROCESSING_CONFIG.items())
-        
-        #collect results across groups
-        all_results = {}
-        
-        for group_name, config in reversed(groups_to_process):
-            print(f"\n{'='*60}")
-            print(f"Processing group: {group_name}")
-            print(f"{'='*60}")
-            
-            group_basins = basins.copy()
-            
-            if config['area_greater_than'] is not None:
-                group_basins = group_basins[group_basins['area_km2'] > config['area_greater_than']]
-            
-            if config['area_not_greater_than'] is not None:
-                group_basins = group_basins[group_basins['area_km2'] <= config['area_not_greater_than']]
-            
-            if len(group_basins) == 0:
-                print("No basins in this group, skipping...")
-                continue
-            
-            print(f"Processing {len(group_basins)} basins")
-            
-            try:
-                hydroatlas = load_hydroatlas_data(config['hydroatlas_level'])
-            except FileNotFoundError as e:
-                print(f"Warning: Skipping group {group_name}: {e}")
-                continue
-            
-            intersections = find_intersecting_polygons(
-                basins=group_basins,
-                hydroatlas=hydroatlas,
-                min_overlap_threshold=config['min_overlap_threshold']
-            )
-            
-            group_results = aggregate_basin_attributes(
-                intersections=intersections,
-                min_overlap_threshold=config['min_overlap_threshold']
-            )
-            
-            #merge into all_results
-            all_results.update(group_results)
-            
-            print(f"  Processed {len(group_results)} basins in group {group_name}")
-        
-        if not all_results:
-            print("No new results generated!")
+        if len(basins) == 0:
+            print("All basins have already been processed!")
             return
+    
+    #process all groups and collect results
+    groups_to_process = list(PROCESSING_CONFIG.items())
+    all_results = {}
+    
+    for group_name, config in reversed(groups_to_process):
+        print(f"\n{'='*60}")
+        print(f"Processing group: {group_name}")
+        print(f"{'='*60}")
         
-        #create dataframe from new results
-        print("\nCreating output for new results...")        
-        df = pd.DataFrame.from_dict(all_results, orient="index")
-        df = df.reset_index(drop=True)
-        new_output_df = format_output_dataframe(df)
+        group_basins = basins.copy()
         
-        #merge with existing data
-        print("\nMerging with existing data...")
-        final_output_df = merge_with_existing(new_output_df, OUTPUT_FILE)
+        if config['area_greater_than'] is not None:
+            group_basins = group_basins[group_basins['area_km2'] > config['area_greater_than']]
         
-        #save output
-        final_output_df.to_csv(OUTPUT_FILE, index=False)
-        print(f"Results saved to: {OUTPUT_FILE}")
-        print(f"  New LINKNOs processed: {len(new_output_df)}")
-        print(f"  Total LINKNOs in file: {len(final_output_df)}")
+        if config['area_not_greater_than'] is not None:
+            group_basins = group_basins[group_basins['area_km2'] <= config['area_not_greater_than']]
         
-    except Exception as e:
-        print(f"Error during processing: {e}")
-        raise
-
+        if len(group_basins) == 0:
+            print("No basins in this group, skipping...")
+            continue
+        
+        print(f"Processing {len(group_basins)} basins")
+        
+        try:
+            hydroatlas = load_hydroatlas_data(config['hydroatlas_level'])
+        except FileNotFoundError as e:
+            print(f"Warning: Skipping group {group_name}: {e}")
+            continue
+        
+        #find intersecting polygons
+        print("Finding intersecting polygons...")
+        intersections = find_intersecting_polygons(
+            basins=group_basins,
+            hydroatlas=hydroatlas,
+            min_overlap_threshold=config['min_overlap_threshold']
+        )
+        
+        #aggregate attributes
+        print("Aggregating attributes for basins...")
+        group_results = aggregate_basin_attributes(
+            intersections=intersections,
+            min_overlap_threshold=config['min_overlap_threshold']
+        )
+        
+        #merge results
+        all_results.update(group_results)
+        
+        print(f"  Processed {len(group_results)} basins in group {group_name}")
+    
+    if not all_results:
+        print("No new results generated!")
+        return
+    
+    #create dataframe from new results
+    print("\nCreating output for new results...")        
+    df = pd.DataFrame.from_dict(all_results, orient="index")
+    df = df.reset_index(drop=True)
+    new_output_df = format_output_dataframe(df)
+    
+    #merge with existing data
+    print("\nMerging with existing data...")
+    final_output_df = merge_with_existing(new_output_df, output_file)
+    
+    #save output
+    final_output_df.to_csv(output_file, index=False)
+    print(f"Results saved to: {output_file}")
+    print(f"  New LINKNOs processed: {len(new_output_df)}")
+    print(f"  Total LINKNOs in file: {len(final_output_df)}")
 
 if __name__ == "__main__":
     main()

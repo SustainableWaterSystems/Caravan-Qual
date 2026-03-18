@@ -28,23 +28,25 @@ sys.stdout.reconfigure(line_buffering=True)
 ###                     Setup                         ###
 ###---------------------------------------------------###
 
+#directories and files
 input_dir_wqms = "/gpfs/work4/0/dynql/Caravan-Qual/"
 input_dir_aux_data = "/gpfs/work4/0/dynql/Caravan-Qual/auxiliary/"
 
-GRAPH_FILE      = os.path.join(input_dir_aux_data, "geoglows_TDXhydro/graph_G.pkl")
-CATCH_GPKG_DIR  = os.path.join(input_dir_aux_data, "geoglows_TDXhydro/catchments_gpkg/")
-SITE_CSV        = os.path.join(input_dir_wqms, "wqms_site_info.csv")
+stream_graph_file = os.path.join(input_dir_aux_data, "geoglows_TDXhydro/graph_G.pkl")
+catchments_gpkg_dir = os.path.join(input_dir_aux_data, "geoglows_TDXhydro/catchments_gpkg/")
+site_info_file = os.path.join(input_dir_wqms, "wqms_site_info.csv")
 
-OUTPUT_DIR      = os.path.join(input_dir_aux_data, "wqms-gpkg/individual_catchments/")
-FINAL_OUTPUT    = os.path.join(input_dir_aux_data, "wqms-gpkg/wqms_TDXhydro_catchments.gpkg")
+output_dir = os.path.join(input_dir_aux_data, "wqms-gpkg/individual_catchments/")
+output_gpkg = os.path.join(input_dir_aux_data, "wqms-gpkg/wqms_TDXhydro_catchments.gpkg")
 
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs(os.path.dirname(FINAL_OUTPUT), exist_ok=True)
+os.makedirs(output_dir, exist_ok=True)
+os.makedirs(os.path.dirname(output_gpkg), exist_ok=True)
 
+#options
 COMBINE_NOW = True #option to combine individual files at the end
 INCREMENTAL_MODE = True #just append polygons from new LINKNOs to existing files
-
 G_GLOBAL = None
+
 
 ###---------------------------------------------------###
 ###               Add wqms shapefiles                 ###
@@ -56,7 +58,8 @@ def init_worker(graph):
 
 
 def get_upstream_network(linkno, linkno_to_geom, local_cache, reuse_stats=None):
-
+    """Derive upstream network (based on LINKNO) also caching previously processed ones"""
+    
     #if LINKNO already computed, just return
     if linkno in local_cache:
         geom, upstream_count = local_cache[linkno]
@@ -100,8 +103,7 @@ def get_upstream_network(linkno, linkno_to_geom, local_cache, reuse_stats=None):
             if upstream_linkno not in processed and upstream_linkno not in local_cache:
                 to_process.append(upstream_linkno)
             elif upstream_linkno in local_cache:
-                #if cached upstream is found, add directly
-                cached_geom, cached_count = local_cache[upstream_linkno]
+                cached_geom, cached_count = local_cache[upstream_linkno] #if cached upstream is found, add directly
                 if cached_geom is not None:
                     geom_list.append(cached_geom)
                 total_upstream_count += cached_count
@@ -117,7 +119,7 @@ def get_upstream_network(linkno, linkno_to_geom, local_cache, reuse_stats=None):
 
 
 def process_gpkg_worker(gpkg_file, linkno_set, output_dir, incremental=True):
-    """Process a single GPKG file to generate catchments per LINKNO."""
+    """Process a single GPKG file to generate catchments per LINKNO"""
     
     global G_GLOBAL
     start_time = time.time()
@@ -168,7 +170,7 @@ def process_gpkg_worker(gpkg_file, linkno_set, output_dir, incremental=True):
         gdf = gdf.dropna(subset=["LINKNO"])
         gdf["LINKNO"] = gdf["LINKNO"].astype(int)
 
-        #check Which LINKNOs are in this gpkg
+        #check Which LINKNOs are present in this .gpkg
         gdf_links = set(gdf["LINKNO"].values)
         linknos_requested = linkno_set & gdf_links
         
@@ -246,8 +248,9 @@ def process_gpkg_worker(gpkg_file, linkno_set, output_dir, incremental=True):
         return base_name, 'ERROR', elapsed
 
 
-def combine_individual_files(output_dir, final_output):
-
+def combine_individual_files(output_dir, output_gpkg):
+    """Combine all individual .gpkgs (i.e. GeoGLOWSv2 VPUs) into a single global .gpkg"""
+    
     print(f"Combining individual files from {output_dir}")
     individual_files = glob.glob(os.path.join(output_dir, "catchments_*.gpkg"))
     if not individual_files:
@@ -271,8 +274,6 @@ def combine_individual_files(output_dir, final_output):
     if all_gdfs:
         print(f"  Concatenating {len(all_gdfs)} dataframes...")
         final_gdf = pd.concat(all_gdfs, ignore_index=True)
-        
-        #check for (and handle, if needed) duplicates
         initial_count = len(final_gdf)
         duplicate_count = final_gdf.duplicated(subset=['LINKNO']).sum()
         
@@ -280,8 +281,8 @@ def combine_individual_files(output_dir, final_output):
             print(f"  Found {duplicate_count} duplicate LINKNOs, keeping first occurrence...")
             final_gdf = final_gdf.drop_duplicates(subset=['LINKNO'], keep='first')
         
-        print(f"  Writing final output to {final_output}")
-        final_gdf.to_file(final_output, driver="GPKG", layer="catchments")
+        print(f"  Writing final output to {output_gpkg}")
+        final_gdf.to_file(output_gpkg, driver="GPKG", layer="catchments")
         print(f"  Combined file saved: {len(final_gdf)} unique LINKNOs")
         
         if duplicate_count > 0:
@@ -301,13 +302,13 @@ if __name__ == "__main__":
     
     #load river network graph
     print("Loading river network graph...")
-    with open(GRAPH_FILE, "rb") as f:
+    with open(stream_graph_file, "rb") as f:
         G_main = pickle.load(f)
     print(f"  Graph loaded: {G_main.number_of_nodes()} nodes, {G_main.number_of_edges()} edges.")
 
     #load water quality station data
     print("Loading and preparing station data...")
-    stations = pd.read_csv(SITE_CSV)
+    stations = pd.read_csv(site_info_file)
     
     #check for LINKNO
     if "LINKNO" not in stations.columns:
@@ -321,12 +322,35 @@ if __name__ == "__main__":
     unique_linknos = set(stations["LINKNO"].unique())
 
     print(f"  Total station records: {len(stations)}")
-    print(f"  Unique LINKNOs to process: {len(unique_linknos)}")
+    print(f"  Unique LINKNOs for processing: {len(unique_linknos)}")
 
-    #get GPKG files, sort by size
-    gpkg_files = glob.glob(os.path.join(CATCH_GPKG_DIR, "*.gpkg"))
+    #check which LINKNOs already exist in the combined file
+    already_processed = set()
+    if os.path.exists(output_gpkg) and INCREMENTAL_MODE:
+        print(f"\nChecking existing combined file for already-processed LINKNOs...")
+        try:
+            existing_gdf = gpd.read_file(output_gpkg, layer="catchments", ignore_geometry=True) #read only LINKNO column (without loading geometries)
+            already_processed = set(existing_gdf['LINKNO'].astype(int).values)
+            print(f"  Found {len(already_processed)} LINKNOs already processed")
+            del existing_gdf
+            gc.collect()
+        except Exception as e:
+            print(f"  Warning: Could not load existing combined file: {e}")
+            already_processed = set()
+    
+    linknos_to_process = unique_linknos - already_processed #determine which LINKNOs require processing
+    
+    if not linknos_to_process:
+        print(f"\nAll {len(unique_linknos)} LINKNOs already processed!")
+        sys.exit(0)
+    
+    print(f"\n  LINKNOs to process: {len(linknos_to_process)} (new)")
+    print(f"  LINKNOs already done: {len(already_processed)}")
+
+    #get .gpkg files
+    gpkg_files = glob.glob(os.path.join(catchments_gpkg_dir, "*.gpkg"))
     if not gpkg_files:
-        raise SystemExit(f"No GPKG files found in {CATCH_GPKG_DIR}")
+        raise SystemExit(f"No GPKG files found in {catchments_gpkg_dir}")
 
     gpkg_files_with_size = [(f, os.path.getsize(f)) for f in gpkg_files]
     gpkg_files_with_size.sort(key=lambda x: x[1], reverse=False)
@@ -336,7 +360,7 @@ if __name__ == "__main__":
 
     #run multiprocessing
     NUM_PROCESSES = 4
-    process_args = [(f, unique_linknos, OUTPUT_DIR, INCREMENTAL_MODE) for f in gpkg_files]
+    process_args = [(f, linknos_to_process, output_dir, INCREMENTAL_MODE) for f in gpkg_files]
     
     completed = 0
     start_time = time.time()
@@ -348,11 +372,12 @@ if __name__ == "__main__":
             
             if completed % 10 == 0:
                 total_elapsed = time.time() - start_time
-                print(f"\n>>> Progress: {completed}/{len(gpkg_files)} files ({completed/len(gpkg_files)*100:.1f}%), {total_elapsed/60:.1f} min elapsed\n")
+                print(f"\n Progress: {completed}/{len(gpkg_files)} files ({completed/len(gpkg_files)*100:.1f}%), {total_elapsed/60:.1f} min elapsed\n")
 
     if COMBINE_NOW:
-        combine_individual_files(OUTPUT_DIR, FINAL_OUTPUT)
+        combine_individual_files(output_dir, output_gpkg)
+        print(f"Final output combined!")
     else:
-        print(f"Final output not combined.")
+        print(f"Final output not combined!")
 
     print("Processing complete!")

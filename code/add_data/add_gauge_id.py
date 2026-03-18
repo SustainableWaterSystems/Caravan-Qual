@@ -16,18 +16,20 @@ sys.stdout.reconfigure(line_buffering=True)
 ###                     Setup                         ###
 ###---------------------------------------------------###
 
-#Directories
+#directories
 input_dir_wqms = "/gpfs/work4/0/dynql/Caravan-Qual/"
 input_dir_aux_data = "/gpfs/work4/0/dynql/Caravan-Qual/auxiliary/"
 input_dir_Caravan = "/gpfs/work4/0/dynql/Caravan-Qual/auxiliary/Caravan/"   
 
-include_full_grdc = False #option to include or exclude grdc sites that do not have a permissive license.
+#options
+INCLUDE_FULL_GRDC = False #option to include or exclude grdc sites that do not have a permissive license, requires caravan_site_info_full_grdc.csv
     
 ###---------------------------------------------------###
 ###              Add streamflow data                  ###
 ###---------------------------------------------------###
    
 def load_data(wqms_csv, caravan_csv, graph_file):
+    """Load water quality and streamflow data for matching"""
 
     #wqms sites
     print("Loading WQMS sites...")
@@ -57,7 +59,7 @@ def load_data(wqms_csv, caravan_csv, graph_file):
     )
     print(f"{len(gdf_caravan)} Caravan sites loaded")
 
-    #Load river network graph
+    #load river network graph
     print("Loading river network graph...")
     with open(graph_file, "rb") as f:
         G = pickle.load(f)
@@ -68,6 +70,7 @@ def load_data(wqms_csv, caravan_csv, graph_file):
 
 def find_candidates(wq_row, caravan_df, match_stage):
     """Select candidate gauges for matching"""
+    
     if match_stage == "same_linkno":
         candidates = caravan_df[caravan_df["LINKNO"] == wq_row["LINKNO"]].copy()
     elif match_stage == "same_merged_linkno":
@@ -78,7 +81,7 @@ def find_candidates(wq_row, caravan_df, match_stage):
 
 
 def calculate_river_distance(source_link, target_link, G, wq_point=None, gauge_point=None, G_rev=None):
-    """Calculate along-river distance between wqms_id and gauge_id in meters."""
+    """Calculate along-river distance between wqms_id and gauge_id in metres"""
 
     #transform to metric CRS (Web Mercator)
     project = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True).transform
@@ -119,9 +122,9 @@ def calculate_river_distance(source_link, target_link, G, wq_point=None, gauge_p
             if best_wq_geom is best_gauge_geom:
                 return abs(best_gauge_pos - best_wq_pos)
             
-            #If different sub-segments, sum distances through the MultiLineString
+            #if located on different sub-segments, sum distances through the MultiLineString
             else:
-                #convert back to find which sub-segments in the original geometry
+                #convert back to find which sub-segments are in the original geometry
                 wq_segment_idx = None
                 gauge_segment_idx = None
                 
@@ -143,14 +146,11 @@ def calculate_river_distance(source_link, target_link, G, wq_point=None, gauge_p
                         line_geom_m = transform(project, line_geom)
                         
                         if idx == wq_segment_idx:
-                            #estimate partial distance from wqms_id to end of segment
-                            total_dist += line_geom_m.length - best_wq_pos
+                            total_dist += line_geom_m.length - best_wq_pos #estimate partial distance from wqms_id to end of segment
                         elif idx == gauge_segment_idx:
-                            #estimate partial distance from start to gauge_id
-                            total_dist += best_gauge_pos
+                            total_dist += best_gauge_pos #estimate partial distance from start to gauge_id
                         else:
-                            #get full segment length
-                            total_dist += line_geom_m.length
+                            total_dist += line_geom_m.length #get full segment length
                     
                     return total_dist
                 
@@ -171,16 +171,14 @@ def calculate_river_distance(source_link, target_link, G, wq_point=None, gauge_p
     ##process wqms_id and gauge_id that are not located on the same segment
     paths = []
 
-    #look downstream
     try:
-        paths.append(nx.shortest_path(G, source=source_link, target=target_link, weight="weight"))
+        paths.append(nx.shortest_path(G, source=source_link, target=target_link, weight="weight")) #look downstream
     except (nx.NetworkXNoPath, nx.NodeNotFound):
         pass
 
-    #look upstream
     if G_rev is not None:
         try:
-            paths.append(nx.shortest_path(G_rev, source=source_link, target=target_link, weight="weight"))
+            paths.append(nx.shortest_path(G_rev, source=source_link, target=target_link, weight="weight")) #look upstream
         except (nx.NetworkXNoPath, nx.NodeNotFound):
             pass
 
@@ -197,17 +195,14 @@ def calculate_river_distance(source_link, target_link, G, wq_point=None, gauge_p
                 geom = geom.geoms[0]
             geom_m = transform(project, geom)
 
-            #distance from wqms_id to end of the segment
             if i == 0 and wq_point is not None:
-                wq_m = transform(project, Point(wq_point.x, wq_point.y))
+                wq_m = transform(project, Point(wq_point.x, wq_point.y)) #distance from wqms_id to end of the segment
                 dist_m += geom_m.length - geom_m.project(wq_m)
-            #distance from segment start to gauge_id
             elif i == len(path) - 1 and gauge_point is not None:
-                gauge_m = transform(project, Point(gauge_point.x, gauge_point.y))
+                gauge_m = transform(project, Point(gauge_point.x, gauge_point.y)) #distance from segment start to gauge_id
                 dist_m += geom_m.project(gauge_m)
-            #use stored length in meters for intermediate segments
             else:
-                dist_m += length
+                dist_m += length #use stored length in meters for intermediate segments
 
         if min_dist is None or dist_m < min_dist:
             min_dist = dist_m
@@ -217,11 +212,12 @@ def calculate_river_distance(source_link, target_link, G, wq_point=None, gauge_p
 
 def match_single_wqms_site(wq_row, caravan_df, G, G_rev=None):
     """Match wqms_id to nearest Caravan gauge using along-river distance"""
+    
     #check for same LINKNO
     candidates = find_candidates(wq_row, caravan_df, "same_linkno")
     match_method = "same_linkno"
 
-    #check for same merged_LINKNO (if no candidates)
+    #check for same merged_LINKNO (if no candidates on same LINKNO)
     if candidates.empty:
         candidates = find_candidates(wq_row, caravan_df, "same_merged_linkno")
         match_method = "same_merged_linkno"
@@ -254,7 +250,8 @@ def match_single_wqms_site(wq_row, caravan_df, G, G_rev=None):
             
 
 def run_matching(gdf_wqms, gdf_caravan, G, G_rev=None):
-    """Run the matching for all wqms_ids"""
+    """Run matching procedure for all wqms_ids"""
+    
     print("Starting matching process...")
     results = []
 
@@ -270,6 +267,7 @@ def run_matching(gdf_wqms, gdf_caravan, G, G_rev=None):
 
 def print_matching_summary(results_df):
     """Print matching statistics"""
+    
     print("\n=== MATCHING SUMMARY ===")
     total_sites = len(results_df)
     matched_sites = len(results_df[results_df["gauge_id"].notna()])
@@ -302,7 +300,7 @@ def main():
     
     print(f"Using WQMS file: {wqms_csv}")
 
-    if include_full_grdc:
+    if INCLUDE_FULL_GRDC:
         print("Including GRDC stations that have a non-permissive sharing license")
         caravan_csv = os.path.join(input_dir_Caravan, "caravan_site_info_full_grdc.csv")
     else:    
@@ -319,7 +317,7 @@ def main():
 
     print_matching_summary(results_df)
 
-    if include_full_grdc:
+    if INCLUDE_FULL_GRDC:
         if len(sys.argv) > 1:
             wqms_csv = os.path.join(input_dir_aux_data, "wq_data", f"wqms_site_info_for_{arg_name}_full_grdc.csv")
         else:
