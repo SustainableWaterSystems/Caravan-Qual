@@ -12,7 +12,7 @@ A manuscript associated with the dataset is currently under submission at Scient
 ## About this repository
 This repository contains the code recreating or extending the *Caravan-Qual* dataset.
 
-This code is split across three folders:
+This code/ folder is split across three sub-folders:
 * Caravan/: scripts for downloading *Caravan* from source, and include subsquent extensions. 
 * add_data/: scripts for adding water quality data, deriving upstream catchment polygons and linking to streamflow gauges.  
 * Caravan-Qual/: scripts for processing water quality and streamflow data to create the *Caravan-Qual* dataset, both as .csv's and in .zarr format.
