@@ -1,6 +1,6 @@
 # General license information
 
-**Caravan-Qual (the data) is published under the CC-BY-4.0 license. The code (under `code/` and the [GitHub repository](https://github.com/SustainableWaterSystems/Caravan-Qual)) is published under BSD 3-Clause.**
+**Caravan-Qual (the data) is published under the CC-BY-4.0 license. The code (under `code/` in the [GitHub repository](https://github.com/SustainableWaterSystems/Caravan-Qual)) is published under BSD 3-Clause.**
 
 
 ## Streamflow data
