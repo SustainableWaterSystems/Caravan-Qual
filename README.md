@@ -6,7 +6,7 @@ The full dataset, including data necessary for recreating or extending *Caravan-
 
 A lightweight version of the dataset is also avaliable, hosted on [Zenodo](https://doi.org/10.5281/zenodo.17787065). This version contains monthly (instead of daily) weather data to conform with Zenodo's data storage policies, and also contains all water quality data in .csv format. 
 
-A manuscript associated with the dataset is published in [Scientific Data](https://doi.org/10.1038/s41597-026-07352-7)
+A manuscript associated with the dataset is published in [Scientific Data](https://doi.org/10.1038/s41597-026-07352-7).
 
 
 ## About this repository
