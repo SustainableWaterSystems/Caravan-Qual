@@ -51,7 +51,7 @@ ZARR_CHUNKS = {
 }
 
 #parallelisation settings
-N_WORKERS = min(cpu_count() - 1, 32)  #max 32 workers
+N_WORKERS = min(cpu_count() - 1, 8)  #max 8 workers
 
 ###---------------------------------------------------###
 ###                   Functions                       ###
@@ -746,103 +746,116 @@ def populate_weather_data(input_weather_path, output_zarr_dir, linkno_values, we
 ###              Detailed metadata for each station         ###
 ###---------------------------------------------------------###
 
-def process_station_metadata(wqms_id, wqms_to_idx, output_zarr_dir, wq_vars):
-    """Process metadata for a single station, per parameter."""
+def process_station_metadata_chunk(chunk_idx, wqms_ids, chunk_size, output_zarr_dir, wq_vars, report_every=500):
+    """Process metadata for a wqms_id chunk"""
+    
+    start_idx = chunk_idx * chunk_size
+    end_idx = min(start_idx + chunk_size, len(wqms_ids))
+    chunk_wqms_ids = wqms_ids[start_idx:end_idx]
     
     try:
         ds = xr.open_zarr(output_zarr_dir, consolidated=False)
-        idx = wqms_to_idx[wqms_id]
-        
-        all_dates = []
-        param_counts = {}
-        param_obs = {}
-        param_obs_observed = {}
-        param_obs_lod2 = {}
-        param_obs_ros = {}
-        param_obs_outlier = {}
-        param_starts = {}
-        param_ends = {}
-        
+        loaded = {}
         for var in wq_vars:
-            param_name = var
-            series = ds[var].isel(wqms_id=idx).to_pandas()
-            valid_data = series[series.notna()]
-            
-            obs_count = len(valid_data)
-            param_obs[param_name] = int(obs_count)
-            param_counts[param_name] = obs_count
-            
-            flag_var = f'{param_name}_flag'
+            loaded[var] = ds[var].isel(wqms_id=slice(start_idx, end_idx)).load()
+            flag_var = f'{var}_flag'
             if flag_var in ds:
-                flag_series = ds[flag_var].isel(wqms_id=idx).to_pandas()
-                valid_mask = series.notna()
-                flags_valid = flag_series[valid_mask]
-                
-                param_obs_observed[param_name] = int((flags_valid == 0).sum())
-                param_obs_lod2[param_name]     = int((flags_valid == 1).sum())
-                param_obs_ros[param_name]      = int((flags_valid == 2).sum())
-                param_obs_outlier[param_name]  = int((flags_valid == 3).sum())
-            else:
-                param_obs_observed[param_name] = int(obs_count)
-                param_obs_lod2[param_name]     = 0
-                param_obs_ros[param_name]       = 0
-                param_obs_outlier[param_name]   = 0
-            
-            if obs_count > 0:
-                param_starts[param_name] = valid_data.index.min().strftime('%Y-%m-%d')
-                param_ends[param_name]   = valid_data.index.max().strftime('%Y-%m-%d')
-                all_dates.extend(valid_data.index.tolist())
-            else:
-                param_starts[param_name] = None
-                param_ends[param_name]   = None
-        
-        total_obs = int(sum(param_counts.values()))
-        
-        if all_dates:
-            all_dates = pd.to_datetime(all_dates)
-            start_date = all_dates.min().strftime('%Y-%m-%d')
-            end_date = all_dates.max().strftime('%Y-%m-%d')
-            observation_years = int(all_dates.year.nunique())
-        else:
-            start_date = None
-            end_date = None
-            observation_years = 0
-        
-        parameters_measured = int(sum(1 for count in param_counts.values() if count > 0))
-        
-        if param_counts and max(param_counts.values()) > 0:
-            most_observed_parameter = max(param_counts, key=param_counts.get)
-        else:
-            most_observed_parameter = None
-        
+                loaded[flag_var] = ds[flag_var].isel(wqms_id=slice(start_idx, end_idx)).load()
         ds.close()
         
-        return {
-            'wqms_id': wqms_id,
-            'total_observations': total_obs,
-            'start_date': start_date,
-            'end_date': end_date,
-            'observation_years': observation_years,
-            'parameters_measured': parameters_measured,
-            'most_observed_parameter': most_observed_parameter,
-            'param_obs': param_obs,
-            'param_obs_observed': param_obs_observed,
-            'param_obs_lod2': param_obs_lod2,
-            'param_obs_ros': param_obs_ros,
-            'param_obs_outlier': param_obs_outlier,
-            'param_starts': param_starts,
-            'param_ends': param_ends
-        }
+        results = []
+        for local_i, wqms_id in enumerate(chunk_wqms_ids):
+            all_dates = []
+            param_counts = {}
+            param_obs = {}
+            param_obs_observed = {}
+            param_obs_lod2 = {}
+            param_obs_ros = {}
+            param_obs_outlier = {}
+            param_starts = {}
+            param_ends = {}
+            
+            for var in wq_vars:
+                series = loaded[var].isel(wqms_id=local_i).to_pandas()
+                valid_data = series[series.notna()]
+                
+                obs_count = len(valid_data)
+                param_obs[var] = int(obs_count)
+                param_counts[var] = obs_count
+                
+                flag_var = f'{var}_flag'
+                if flag_var in loaded:
+                    flag_series = loaded[flag_var].isel(wqms_id=local_i).to_pandas()
+                    flags_valid = flag_series[series.notna()]
+                    
+                    param_obs_observed[var] = int((flags_valid == 0).sum())
+                    param_obs_lod2[var]     = int((flags_valid == 1).sum())
+                    param_obs_ros[var]      = int((flags_valid == 2).sum())
+                    param_obs_outlier[var]  = int((flags_valid == 3).sum())
+                else:
+                    param_obs_observed[var] = int(obs_count)
+                    param_obs_lod2[var]     = 0
+                    param_obs_ros[var]      = 0
+                    param_obs_outlier[var]  = 0
+                
+                if obs_count > 0:
+                    param_starts[var] = valid_data.index.min().strftime('%Y-%m-%d')
+                    param_ends[var]   = valid_data.index.max().strftime('%Y-%m-%d')
+                    all_dates.extend(valid_data.index.tolist())
+                else:
+                    param_starts[var] = None
+                    param_ends[var]   = None
+            
+            total_obs = int(sum(param_counts.values()))
+            
+            if all_dates:
+                all_dates = pd.to_datetime(all_dates)
+                start_date = all_dates.min().strftime('%Y-%m-%d')
+                end_date = all_dates.max().strftime('%Y-%m-%d')
+                observation_years = int(all_dates.year.nunique())
+            else:
+                start_date = None
+                end_date = None
+                observation_years = 0
+            
+            parameters_measured = int(sum(1 for count in param_counts.values() if count > 0))
+            
+            if param_counts and max(param_counts.values()) > 0:
+                most_observed_parameter = max(param_counts, key=param_counts.get)
+            else:
+                most_observed_parameter = None
+            
+            results.append({
+                'wqms_id': wqms_id,
+                'total_observations': total_obs,
+                'start_date': start_date,
+                'end_date': end_date,
+                'observation_years': observation_years,
+                'parameters_measured': parameters_measured,
+                'most_observed_parameter': most_observed_parameter,
+                'param_obs': param_obs,
+                'param_obs_observed': param_obs_observed,
+                'param_obs_lod2': param_obs_lod2,
+                'param_obs_ros': param_obs_ros,
+                'param_obs_outlier': param_obs_outlier,
+                'param_starts': param_starts,
+                'param_ends': param_ends
+            })
+            
+            if (local_i + 1) % report_every == 0 or (local_i + 1) == len(chunk_wqms_ids):
+                print(f"    [chunk {chunk_idx}] {local_i+1}/{len(chunk_wqms_ids)} stations done", flush=True)
+        
+        return results
     
     except Exception as e:
-        print(f"Error processing {wqms_id}: {e}")
-        return None
+        print(f"Error processing chunk {chunk_idx} (stations {start_idx}:{end_idx}): {e}", flush=True)
+        return []
 
 
 def add_observation_metadata_to_linkages(output_zarr_dir, df_linkages, wqms_ids):
-    """add comprehensive observation metadata to the linkages dataframe using parallel processing."""
+    """Add comprehensive observation metadata to the linkages dataframe"""
     
-    print("Calculating observation metadata for each WQMS station (parallelised)...")
+    print("Calculating observation metadata for each WQMS station (parallelised, chunked)...")
     
     ds = xr.open_zarr(output_zarr_dir, consolidated=False)
     
@@ -853,27 +866,27 @@ def add_observation_metadata_to_linkages(output_zarr_dir, df_linkages, wqms_ids)
                v not in ['streamflow', 'wqms_lat', 'wqms_lon', 'gauge_lat', 'gauge_lon', 
                         'country_name', 'hydrobasin_level12', 'merged_LINKNO'] and
                'wqms_id' in ds[v].dims]
-    ds.close()
     
     wqms_to_idx = {w: i for i, w in enumerate(wqms_ids)}
     total_stations = len(wqms_ids)
     
-    process_func = partial(process_station_metadata,
-                          wqms_to_idx=wqms_to_idx,
+    chunk_size = ZARR_CHUNKS['wqms_id']
+    n_chunks = (total_stations + chunk_size - 1) // chunk_size
+    
+    process_func = partial(process_station_metadata_chunk,
+                          wqms_ids=wqms_ids,
+                          chunk_size=chunk_size,
                           output_zarr_dir=output_zarr_dir,
                           wq_vars=wq_vars)
     
-    print(f"  Using {N_WORKERS} workers to process {total_stations:,} stations...")
+    print(f"  Using {N_WORKERS} workers to process {n_chunks} chunks ({total_stations:,} stations)...")
     
     results = []
     with Pool(processes=N_WORKERS) as pool:
-        for i, result in enumerate(pool.imap(process_func, wqms_ids), 1):
-            if result is not None:
-                results.append(result)
-            
-            if i % 500 == 0 or i == total_stations:
-                pct = (i / total_stations) * 100
-                print(f"  Progress: {i:,}/{total_stations:,} ({pct:.1f}%)")
+        for i, chunk_results in enumerate(pool.imap(process_func, range(n_chunks)), 1):
+            results.extend(chunk_results)
+            pct = (i / n_chunks) * 100
+            print(f"  Progress: chunk {i}/{n_chunks} ({pct:.1f}%) — {len(results):,} stations done")
     
     print(f"  Successfully processed {len(results):,} stations")
     

@@ -169,8 +169,9 @@ create_caravan_dirs() {
 #rm -rf v110/
 #echo "Caravan-ES extension successfully downloaded!"
 
-##Caravan-IND
-#echo "Downloading Caravan-IND"
+##Camels-IND
+#echo "Downloading Camels-IND"
+#mkdir -p Caravan-nc/camels_ind
 #wget "https://zenodo.org/record/14999580/files/CAMELS_IND_All_Catchments.zip?download=1" \
 #    -O Caravan-nc/CAMELS_IND_All_Catchments.zip
 #unzip -q Caravan-nc/CAMELS_IND_All_Catchments.zip -d Caravan-nc/camels_ind
@@ -234,6 +235,47 @@ create_caravan_dirs() {
 #download_and_extract "https://ndownloader.figshare.com/files/56902358" "CAMELS_NZ_Shapefiles.zip"
 #download_and_extract "https://ndownloader.figshare.com/files/56902373" "CAMELS_NZ_daily_Streamflow.zip"
 
+###Camels-PE
+#echo "Downloading Camels-PE"
+#mkdir -p Caravan-nc/camels_pe
+#cd Caravan-nc/camels_pe
+
+#download_and_extract \
+#    "https://zenodo.org/records/20058779/files/CAMELS-PE_v1.0.zip?download=1" \
+#    "CAMELS-PE_v1.0.zip"
+
+
+###Camels-PL
+#echo "Downloading Camels-PL"
+#mkdir -p Caravan-nc/camels_pl
+#cd Caravan-nc/camels_pl
+
+#download_and_extract \
+#    "https://zenodo.org/records/20133183/files/CAMELS-PL.zip?download=1" \
+#    "CAMELS-PL.zip"
+
+###Camels-LUX
+#echo "Downloading Camels-LUX"
+#mkdir -p Caravan-nc/camels_lux
+#cd Caravan-nc/camels_lux
+
+#download_and_extract \
+#    "https://zenodo.org/records/18776538/files/CAMELS-LUX.zip?download=1" \
+#    "CAMELS-LUX.zip"
+
+#download_and_extract \
+#    "https://zenodo.org/records/18776538/files/CAMELS-LUX_shapefiles.zip?download=1" \
+#    "CAMELS-LUX_shapefiles.zip"
+
+###Camels-FI
+#echo "Downloading Camels-FI"
+#mkdir -p Caravan-nc/camels_fi
+#cd Caravan-nc/camels_fi
+
+#download_and_extract \
+#    "https://zenodo.org/records/20225368/files/CAMELS-FI.zip?download=1" \
+#    "CAMELS-FI.zip"
+
 ###----------------------------------------------------------------###
 ###              Process Caravan and extensions (python)           ###
 ###----------------------------------------------------------------###
@@ -249,30 +291,33 @@ conda activate /gpfs/home6/ejones/.conda/envs/myenv
 #rm -r Caravan-nc/camels_ind #remove Caravan-IND raw files
 #rm -r Caravan-nc/timeseries/netcdf/grdc_raw/ #remove (unprocessed) GRDC netcdfs
 #rm -r Caravan-nc/camels_nz/ #remove CAMELS-NZ raw files
+#rm -r Caravan-nc/camels_pe/ #remove CAMELS-PE raw files
+#rm -r Caravan-nc/camels_pl/ #remove CAMELS-PL raw files
+#rm -r Caravan-nc/camels_lux/ #remove Caravan-LUX raw files
+rm -r Caravan-nc/camels_fi/ #remove Caravan-FI raw files
 
 ###----------------------------------------------------------------###
 ###                 Relocate to auxiliary folder                   ###
 ###----------------------------------------------------------------###
-#mv Caravan-nc/* /gpfs/work4/0/dynql/Caravan-Qual/auxiliary/Caravan/
-#rmdir Caravan-nc/
+mv Caravan-nc/* /gpfs/work4/0/dynql/Caravan-Qual/auxiliary/Caravan/
+rmdir Caravan-nc/
 
-#echo "Finished downloading Caravan + extensions!"
+echo "Finished downloading Caravan + extensions!"
 
 ###----------------------------------------------------------------###
 ###                      Gauge assignments                         ###
 ###----------------------------------------------------------------###
-#echo "Processing gauge station assignments..."
-#python scripts/Caravan/process_all_gauges.py
-#echo "Finished processing gauge station assignments!"
+echo "Processing gauge station assignments..."
+python scripts/Caravan/process_all_gauges.py
+echo "Finished processing gauge station assignments!"
 
 ###----------------------------------------------------------------###
 ###                      Make .zarr                                ###
 ###----------------------------------------------------------------###
-#cp -r auxiliary/Caravan/caravan_site_info.csv caravan_site_info.csv
+cp -r auxiliary/Caravan/caravan_site_info.csv caravan_site_info.csv
 
 echo "Processing Caravan Zarr..."
 python scripts/Caravan/process_Caravan_zarr.py
 echo "Finished processing Caravan zarr!"
-
 
 

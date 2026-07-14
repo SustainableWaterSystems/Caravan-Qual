@@ -16,6 +16,10 @@ class Config:
     TEMP_CAMELSFR_DIR = RAW_CARAVAN_DIR / "camels_fr"
     TEMP_CAMELSIND_DIR = RAW_CARAVAN_DIR / "camels_ind"
     TEMP_CAMELSNZ_DIR = RAW_CARAVAN_DIR / "camels_nz"    
+    TEMP_CAMELSPE_DIR = RAW_CARAVAN_DIR / "camels_pe"
+    TEMP_CAMELSPL_DIR = RAW_CARAVAN_DIR / "camels_pl"   
+    TEMP_CAMELSLUX_DIR = RAW_CARAVAN_DIR / "camels_lux"
+    TEMP_CAMELSFI_DIR = RAW_CARAVAN_DIR / "camels_fi"
     
     #Caravan subdirectories
     LICENSES_DIR = CARAVAN_DIR / "licenses"

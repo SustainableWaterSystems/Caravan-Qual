@@ -471,7 +471,7 @@ def main():
     print("Validating input paths...")
     validate_inputs()
     
-    print("Creating output paths..."
+    print("Creating output paths...")
     output_path = Path(output_file).parent
     output_path.mkdir(parents=True, exist_ok=True)
     
