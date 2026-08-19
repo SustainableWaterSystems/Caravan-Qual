@@ -1,0 +1,221 @@
+FID	Country	gad_id_smj	Region	Economic_Classification
+2	Afghanistan	1	Southern Asia	Low income
+5	Albania	3	Eastern Europe & Central Asia	Upper middle income
+3	Algeria	4	Middle East & North Africa	Upper middle income
+9	American Samoa	5	East Asia & Pacific	Upper middle income
+7	Andorra	6	Western Europe	High income
+8	Angola	7	Sub-Saharan Africa	Lower middle income
+1	Antigua and Barbuda	10	Latin America & Caribbean	High income
+10	Argentina	11	Latin America & Caribbean	Upper middle income
+6	Armenia	12	Eastern Europe & Central Asia	Lower middle income
+0	Aruba	13	Latin America & Caribbean	High income
+11	Australia	14	East Asia & Pacific	High income
+12	Austria	15	Western Europe	High income
+4	Azerbaijan	16	Eastern Europe & Central Asia	Upper middle income
+20	Bahamas	17	Latin America & Caribbean	High income
+15	Bahrain	18	Middle East & North Africa	High income
+21	Bangladesh	19	Southern Asia	Lower middle income
+16	Barbados	20	Latin America & Caribbean	High income
+27	Belarus	21	Eastern Europe & Central Asia	Upper middle income
+19	Belgium	22	Western Europe	High income
+22	Belize	23	Latin America & Caribbean	Upper middle income
+26	Benin	24	Sub-Saharan Africa	Low income
+18	Bermuda	25	North America	High income
+30	Bhutan	26	Southern Asia	Lower middle income
+24	Bolivia	27	Latin America & Caribbean	Lower middle income
+23	Bosnia and Herzegovina	29	Eastern Europe & Central Asia	Upper middle income
+17	Botswana	30	Sub-Saharan Africa	Upper middle income
+29	Brazil	32	Latin America & Caribbean	Upper middle income
+238	British Virgin Islands	34	Latin America & Caribbean	High income
+33	Brunei Darussalam	35	East Asia & Pacific	High income
+31	Bulgaria	36	Eastern Europe & Central Asia	Upper middle income
+233	Burkina Faso	37	Sub-Saharan Africa	Low income
+34	Burundi	38	Sub-Saharan Africa	Low income
+52	Cabo Verde	42	Sub-Saharan Africa	Lower middle income
+36	Cambodia	39	East Asia & Pacific	Lower middle income
+45	Cameroon	40	Sub-Saharan Africa	Lower middle income
+35	Canada	41	North America	High income
+43	Cayman Islands	44	Latin America & Caribbean	High income
+50	Central African Republic	45	Sub-Saharan Africa	Low income
+37	Chad	46	Sub-Saharan Africa	Low income
+85	Channel Islands	95	Western Europe	High income
+113	Channel Islands	95	Western Europe	High income
+42	Chile	47	Latin America & Caribbean	High income
+41	People's Republic of China	48	East Asia & Pacific	Upper middle income
+47	Colombia	52	Latin America & Caribbean	Upper middle income
+46	Comoros	53	Sub-Saharan Africa	Low income
+40	Democratic Republic of the Congo	62	Sub-Saharan Africa	Low income
+39	Republic of the Congo	183	Sub-Saharan Africa	Lower middle income
+49	Costa Rica	55	Latin America & Caribbean	Upper middle income
+110	Cote d Ivoire	56	Sub-Saharan Africa	Lower middle income
+100	Croatia	57	Eastern Europe & Central Asia	Upper middle income
+51	Cuba	58	Latin America & Caribbean	Upper middle income
+170	Curacao	59	Latin America & Caribbean	High income
+54	Cyprus	60	Eastern Europe & Central Asia	High income
+68	Czech Republic	61	Eastern Europe & Central Asia	High income
+55	Denmark	63	Western Europe	High income
+56	Djibouti	64	Middle East & North Africa	Lower middle income
+57	Dominica	65	Latin America & Caribbean	Upper middle income
+59	Dominican Republic	66	Latin America & Caribbean	Upper middle income
+60	Ecuador	68	Latin America & Caribbean	Upper middle income
+61	Egypt	69	Middle East & North Africa	Lower middle income
+66	El Salvador	70	Latin America & Caribbean	Lower middle income
+63	Equatorial Guinea	71	Sub-Saharan Africa	Upper middle income
+65	Eritrea	72	Sub-Saharan Africa	Low income
+64	Estonia	73	Eastern Europe & Central Asia	High income
+67	Ethiopia	74	Sub-Saharan Africa	Low income
+74	Faroe Islands	76	Western Europe	High income
+71	Fiji	77	East Asia & Pacific	Upper middle income
+70	Finland	78	Western Europe	High income
+77	France	79	Western Europe	High income
+77	French Southern and Antarctic Lands	82	Western Europe	High income
+75	French Polynesia	81	East Asia & Pacific	High income
+80	Gabon	83	Sub-Saharan Africa	Upper middle income
+79	Gambia	84	Sub-Saharan Africa	Low income
+81	Georgia	85	Eastern Europe & Central Asia	Lower middle income
+87	Germany	86	Western Europe	High income
+82	Ghana	87	Sub-Saharan Africa	Lower middle income
+83	Gibraltar	88	Western Europe	High income
+91	Greece	89	Western Europe	High income
+84	Grenada	91	Latin America & Caribbean	Upper middle income
+90	Guam	93	East Asia & Pacific	High income
+92	Guatemala	94	Latin America & Caribbean	Lower middle income
+93	Guinea	96	Sub-Saharan Africa	Low income
+184	Guinea-Bissau	97	Sub-Saharan Africa	Low income
+94	Guyana	98	Latin America & Caribbean	Upper middle income
+96	Haiti	99	Latin America & Caribbean	Low income
+98	Honduras	101	Latin America & Caribbean	Lower middle income
+251	Hong Kong	102	East Asia & Pacific	High income
+101	Hungary	103	Eastern Europe & Central Asia	High income
+102	Iceland	104	Western Europe	High income
+105	India	105	Southern Asia	Lower middle income
+103	Indonesia	106	East Asia & Pacific	Lower middle income
+107	Iran	107	Middle East & North Africa	Upper middle income
+111	Iraq	108	Middle East & North Africa	Upper middle income
+62	Ireland	109	Western Europe	High income
+104	Isle of Man	239	Western Europe	High income
+108	Israel	111	Middle East & North Africa	High income
+109	Italy	112	Western Europe	High income
+114	Jamaica	113	Latin America & Caribbean	Upper middle income
+112	Japan	114	East Asia & Pacific	High income
+116	Jordan	116	Middle East & North Africa	Lower middle income
+126	Kazakhstan	117	Eastern Europe & Central Asia	Upper middle income
+119	Kenya	118	Sub-Saharan Africa	Lower middle income
+122	Kiribati	119	East Asia & Pacific	Lower middle income
+121	North Korea	166	East Asia & Pacific	Low income
+123	South Korea	211	East Asia & Pacific	High income
+125	Kuwait	121	Middle East & North Africa	High income
+120	Kyrgyzstan	122	Eastern Europe & Central Asia	Lower middle income
+127	Laos	123	East Asia & Pacific	Lower middle income
+129	Latvia	124	Eastern Europe & Central Asia	High income
+128	Lebanon	125	Middle East & North Africa	Upper middle income
+134	Lesotho	126	Sub-Saharan Africa	Lower middle income
+131	Liberia	127	Sub-Saharan Africa	Low income
+136	Libya	128	Middle East & North Africa	Upper middle income
+133	Liechtenstein	129	Western Europe	High income
+130	Lithuania	130	Eastern Europe & Central Asia	High income
+135	Luxembourg	131	Western Europe	High income
+139	Macao SAR	132	East Asia & Pacific	High income
+145	Republic of Macedonia	133	Eastern Europe & Central Asia	Upper middle income
+137	Madagascar	134	Sub-Saharan Africa	Low income
+144	Malawi	135	Sub-Saharan Africa	Low income
+157	Malaysia	136	East Asia & Pacific	Upper middle income
+154	Maldives	137	Southern Asia	Upper middle income
+146	Mali	138	Sub-Saharan Africa	Low income
+152	Malta	139	Middle East & North Africa	High income
+187	Marshall Islands	140	East Asia & Pacific	Upper middle income
+151	Mauritania	142	Sub-Saharan Africa	Lower middle income
+149	Mauritius	143	Sub-Saharan Africa	Upper middle income
+156	Mexico	145	Latin America & Caribbean	Upper middle income
+73	Federated States of Micronesia	146	East Asia & Pacific	Lower middle income
+140	Moldova	147	Eastern Europe & Central Asia	Lower middle income
+147	Monaco	148	Western Europe	High income
+142	Mongolia	149	East Asia & Pacific	Lower middle income
+155	Montenegro	150	Eastern Europe & Central Asia	Upper middle income
+148	Morocco	152	Middle East & North Africa	Lower middle income
+158	Mozambique	153	Sub-Saharan Africa	Low income
+25	Myanmar	154	East Asia & Pacific	Lower middle income
+241	Namibia	155	Sub-Saharan Africa	Upper middle income
+168	Nauru	156	East Asia & Pacific	Upper middle income
+167	Nepal	157	Southern Asia	Low income
+165	Netherlands	158	Western Europe	High income
+159	New Caledonia	159	East Asia & Pacific	High income
+172	New Zealand	160	East Asia & Pacific	High income
+171	Nicaragua	161	Latin America & Caribbean	Lower middle income
+162	Niger	162	Sub-Saharan Africa	Low income
+164	Nigeria	163	Sub-Saharan Africa	Lower middle income
+48	Northern Mariana Islands	167	East Asia & Pacific	High income
+166	Norway	168	Western Europe	High income
+153	Oman	169	Middle East & North Africa	High income
+178	Pakistan	170	Southern Asia	Lower middle income
+183	Palau	171	East Asia & Pacific	High income
+180	Panama	173	Latin America & Caribbean	Upper middle income
+182	Papua New Guinea	174	East Asia & Pacific	Lower middle income
+173	Paraguay	175	Latin America & Caribbean	Upper middle income
+175	Peru	176	Latin America & Caribbean	Upper middle income
+189	Philippines	177	East Asia & Pacific	Lower middle income
+179	Poland	179	Eastern Europe & Central Asia	High income
+181	Portugal	180	Western Europe	High income
+190	Puerto Rico	181	Latin America & Caribbean	High income
+185	Qatar	182	Middle East & North Africa	High income
+188	Romania	185	Eastern Europe & Central Asia	Upper middle income
+191	Russia	186	Eastern Europe & Central Asia	Upper middle income
+192	Rwanda	187	Sub-Saharan Africa	Low income
+246	Samoa	195	East Asia & Pacific	Upper middle income
+202	San Marino	196	Western Europe	High income
+222	Sao Tome and Principe	197	Sub-Saharan Africa	Lower middle income
+193	Saudi Arabia	198	Middle East & North Africa	High income
+198	Senegal	199	Sub-Saharan Africa	Low income
+206	Serbia	200	Eastern Europe & Central Asia	Upper middle income
+196	Seychelles	201	Sub-Saharan Africa	High income
+201	Sierra Leone	202	Sub-Saharan Africa	Low income
+203	Singapore	203	East Asia & Pacific	High income
+252	Sint Maarten (Dutch part)	204	Latin America & Caribbean	High income
+132	Slovakia	205	Eastern Europe & Central Asia	High income
+200	Slovenia	206	Eastern Europe & Central Asia	High income
+28	Solomon Islands	207	East Asia & Pacific	Lower middle income
+204	Somalia	208	Sub-Saharan Africa	Low income
+197	South Africa	209	Sub-Saharan Africa	Upper middle income
+253	South Sudan	212	Sub-Saharan Africa	Low income
+205	Spain	213	Western Europe	High income
+38	Sri Lanka	215	Southern Asia	Lower middle income
+195	St. Kitts and Nevis	189	Latin America & Caribbean	High income
+207	St. Lucia	190	Latin America & Caribbean	Upper middle income
+236	St. Vincent and the Grenadines	192	Latin America & Caribbean	Upper middle income
+208	Sudan	216	Sub-Saharan Africa	Lower middle income
+169	Suriname	217	Latin America & Caribbean	Upper middle income
+247	eSwatini	219	Sub-Saharan Africa	Lower middle income
+210	Sweden	220	Western Europe	High income
+213	Switzerland	221	Western Europe	High income
+212	Syrian Arab Republic	222	Middle East & North Africa	Lower middle income
+226	Taiwan China	223	East Asia & Pacific	High income
+217	Tajikistan	224	Eastern Europe & Central Asia	Lower middle income
+228	Tanzania	225	Sub-Saharan Africa	Low income
+216	Thailand	226	East Asia & Pacific	Upper middle income
+254	Timor-Leste	67	East Asia & Pacific	Lower middle income
+221	Togo	227	Sub-Saharan Africa	Low income
+220	Tonga	229	East Asia & Pacific	Upper middle income
+215	Trinidad and Tobago	230	Latin America & Caribbean	High income
+223	Tunisia	231	Middle East & North Africa	Lower middle income
+224	Turkey	232	Eastern Europe & Central Asia	Upper middle income
+227	Turkmenistan	233	Eastern Europe & Central Asia	Upper middle income
+218	Turks and Caicos Islands	234	Latin America & Caribbean	High income
+225	Tuvalu	235	East Asia & Pacific	Upper middle income
+229	Uganda	236	Sub-Saharan Africa	Low income
+231	Ukraine	237	Eastern Europe & Central Asia	Lower middle income
+214	United Arab Emirates	238	Middle East & North Africa	High income
+230	United Kingdom	239	Western Europe	High income
+232	United States of America	240	North America	High income
+234	Uruguay	242	Latin America & Caribbean	High income
+235	Uzbekistan	243	Eastern Europe & Central Asia	Lower middle income
+163	Vanuatu	244	East Asia & Pacific	Lower middle income
+237	Venezuela	246	Latin America & Caribbean	Upper middle income
+239	Vietnam	247	East Asia & Pacific	Lower middle income
+240	United States Virgin Islands	248	Latin America & Caribbean	High income
+242	West Bank & Gaza	172	Middle East & North Africa	Lower middle income
+95	West Bank & Gaza	172	Middle East & North Africa	Lower middle income
+248	Yemen	251	Middle East & North Africa	Lower middle income
+249	Zambia	252	Sub-Saharan Africa	Lower middle income
+250	Zimbabwe	253	Sub-Saharan Africa	Low income
+255	Kosovo	120	Eastern Europe & Central Asia	Upper middle income
+256	South Georgia and the South Sandwich Islands	210	Latin America & Caribbean	Upper middle income 
